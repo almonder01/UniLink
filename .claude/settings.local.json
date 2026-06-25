@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sips *)",
+      "Bash(pkill -f \"flutter run\")",
+      "Bash(xargs kill -9)",
+      "Bash(/Users/alibadokhon.23icloud.com/Applications/flutter/bin/flutter run *)",
+      "Bash(/Users/alibadokhon.23icloud.com/Applications/flutter/bin/flutter pub *)",
+      "Bash(/Users/alibadokhon.23icloud.com/Applications/flutter/bin/flutter devices *)",
+      "Skill(run)"
+    ]
+  }
+}
