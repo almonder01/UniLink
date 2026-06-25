@@ -8,6 +8,9 @@ import 'club_detail_screen.dart';
 import 'settings_screen.dart';
 import 'about_screen.dart';
 import 'support_screen.dart';
+import 'widgets/confirm_sheet.dart';
+import 'widgets/followed_club_tile.dart';
+import 'widgets/profile_widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => const _ConfirmSheet(
+      builder: (_) => const ConfirmSheet(
         title: 'Log out?',
         message: 'You will be returned to the login screen.',
         confirmLabel: 'Log out',
@@ -59,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => const _ConfirmSheet(
+      builder: (_) => const ConfirmSheet(
         title: 'Delete Account?',
         message:
             'This action is permanent and cannot be undone. All your data will be erased.',
@@ -79,27 +82,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final cs = Theme.of(context).colorScheme;
     final user = context.watch<AuthProvider>().currentUser;
     if (user == null) return const SizedBox.shrink();
+
     final followProvider = context.watch<ClubFollowProvider>();
     final allClubs = context.watch<ClubProvider>().clubs;
     final followedIds = followProvider.getFollowedIds(user.id);
     final followedClubs =
         allClubs.where((c) => followedIds.contains(c.id)).toList();
 
-    final initials = user.name.trim().split(' ').length >= 2
-        ? '${user.name.trim().split(' ')[0][0]}${user.name.trim().split(' ')[1][0]}'
-            .toUpperCase()
-        : user.name.substring(0, 2).toUpperCase();
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          // ── Header ─────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
                     cs.primary,
-                    Color.lerp(cs.primary, const Color(0xFF8B5CF6), 0.6)!
+                    Color.lerp(cs.primary, const Color(0xFF8B5CF6), 0.6)!,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -172,14 +172,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+
+          // ── Body ───────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Major field
-                  const _SectionLabel('Academic Info'),
+                  // ── Academic Info ─────────────────────────────────────────
+                  const SectionLabel('Academic Info'),
                   const SizedBox(height: 10),
                   Card(
                     child: Padding(
@@ -243,9 +245,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // ── Following ─────────────────────────────────────────────
                   Row(
                     children: [
-                      const _SectionLabel('Following'),
+                      const SectionLabel('Following'),
                       const SizedBox(width: 8),
                       if (followedClubs.isNotEmpty)
                         Container(
@@ -275,14 +279,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 Icon(Icons.groups_outlined,
                                     size: 22,
-                                    color: cs.onSurface.withValues(alpha: 0.3)),
+                                    color:
+                                        cs.onSurface.withValues(alpha: 0.3)),
                                 const SizedBox(width: 12),
                                 Text(
                                   'No clubs followed yet',
                                   style: TextStyle(
                                       fontSize: 14,
-                                      color:
-                                          cs.onSurface.withValues(alpha: 0.4)),
+                                      color: cs.onSurface
+                                          .withValues(alpha: 0.4)),
                                 ),
                               ],
                             ),
@@ -292,8 +297,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               for (int i = 0;
                                   i < followedClubs.length;
                                   i++) ...[
-                                if (i > 0) const Divider(height: 1, indent: 56),
-                                _FollowedClubTile(
+                                if (i > 0)
+                                  const Divider(height: 1, indent: 56),
+                                FollowedClubTile(
                                   club: followedClubs[i],
                                   onTap: () => Navigator.push(
                                     context,
@@ -308,12 +314,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                   ),
                   const SizedBox(height: 24),
-                  const _SectionLabel('General'),
+
+                  // ── General ───────────────────────────────────────────────
+                  const SectionLabel('General'),
                   const SizedBox(height: 10),
                   Card(
                     child: Column(
                       children: [
-                        _MenuTile(
+                        MenuTile(
                           icon: Icons.settings_rounded,
                           label: 'Settings',
                           onTap: () => Navigator.push(
@@ -322,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   builder: (_) => const SettingsScreen())),
                         ),
                         const Divider(height: 1, indent: 56),
-                        _MenuTile(
+                        MenuTile(
                           icon: Icons.info_outline_rounded,
                           label: 'About UniLink',
                           onTap: () => Navigator.push(
@@ -331,7 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   builder: (_) => const AboutScreen())),
                         ),
                         const Divider(height: 1, indent: 56),
-                        _MenuTile(
+                        MenuTile(
                           icon: Icons.help_outline_rounded,
                           label: 'Support',
                           onTap: () => Navigator.push(
@@ -343,17 +351,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
+
+                  // ── Danger zone ───────────────────────────────────────────
                   Card(
                     child: Column(
                       children: [
-                        _MenuTile(
+                        MenuTile(
                           icon: Icons.delete_outline_rounded,
                           label: 'Delete Account',
                           color: Colors.red,
                           onTap: () => _deleteAccount(context),
                         ),
                         const Divider(height: 1, indent: 56),
-                        _MenuTile(
+                        MenuTile(
                           icon: Icons.logout_rounded,
                           label: 'Logout',
                           color: Colors.red,
@@ -366,173 +376,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-      ),
-    );
-  }
-}
-
-class _MenuTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final Color? color;
-
-  const _MenuTile(
-      {required this.icon, required this.label, this.onTap, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final effectiveColor = color ?? cs.onSurface;
-
-    return ListTile(
-      leading: Icon(icon, color: effectiveColor, size: 22),
-      title: Text(
-        label,
-        style: TextStyle(
-            fontSize: 15, fontWeight: FontWeight.w500, color: effectiveColor),
-      ),
-      trailing: Icon(Icons.chevron_right_rounded,
-          color: cs.onSurface.withValues(alpha: 0.3), size: 20),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-    );
-  }
-}
-
-class _FollowedClubTile extends StatelessWidget {
-  final ClubModel club;
-  final VoidCallback onTap;
-
-  const _FollowedClubTile({required this.club, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final logoColor = Color(int.parse(club.logoColor, radix: 16));
-    final initials = club.name.trim().split(' ').length >= 2
-        ? '${club.name.trim().split(' ')[0][0]}${club.name.trim().split(' ')[1][0]}'
-            .toUpperCase()
-        : club.name.substring(0, 2).toUpperCase();
-
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [logoColor, Color.lerp(logoColor, Colors.black, 0.25)!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            initials,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
-          ),
-        ),
-      ),
-      title: Text(
-        club.name,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        club.category,
-        style:
-            TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.5)),
-      ),
-      trailing: Icon(Icons.chevron_right_rounded,
-          color: cs.onSurface.withValues(alpha: 0.3), size: 20),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    );
-  }
-}
-
-class _ConfirmSheet extends StatelessWidget {
-  final String title;
-  final String message;
-  final String confirmLabel;
-  final Color confirmColor;
-
-  const _ConfirmSheet({
-    required this.title,
-    required this.message,
-    required this.confirmLabel,
-    required this.confirmColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6)),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: FilledButton.styleFrom(backgroundColor: confirmColor),
-                  child: Text(confirmLabel),
-                ),
-              ),
-            ],
           ),
         ],
       ),
