@@ -7,6 +7,7 @@ import '../student/clubs_screen.dart';
 import '../student/home_screen.dart';
 import '../student/profile_screen.dart';
 import 'club_management_screen.dart';
+import 'no_club_screen.dart';
 
 class ManagerShell extends StatefulWidget {
   const ManagerShell({super.key});
@@ -37,7 +38,7 @@ class _ManagerShellState extends State<ManagerShell> {
       const ClubsScreen(),
       managedClub != null
           ? ClubManagementScreen(club: managedClub)
-          : const _NoClubScreen(),
+          : const NoClubScreen(),
       const ProfileScreen(),
     ];
 
@@ -76,42 +77,6 @@ class _ManagerShellState extends State<ManagerShell> {
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),
               label: 'Profile',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NoClubScreen extends StatelessWidget {
-  const _NoClubScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Club')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.manage_accounts_rounded,
-                size: 64, color: cs.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 16),
-            Text(
-              'No club assigned yet',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface.withValues(alpha: 0.5)),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ask your admin to assign you\nas a club manager.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 14, color: cs.onSurface.withValues(alpha: 0.4)),
             ),
           ],
         ),

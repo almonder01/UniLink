@@ -2,10 +2,13 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import '../../models/club.dart';
 import '../../models/event.dart';
 import '../../services/notification_service.dart';
+import 'additional_photos_grid.dart';
+import 'color_swatch_picker.dart';
+import 'cover_photo_picker.dart';
+import 'event_datetime_card.dart';
 
 class CreateEventScreen extends StatefulWidget {
   final ClubModel club;
@@ -37,19 +40,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _picker = ImagePicker();
 
   bool get _isEditing => widget.existingEvent != null;
-
-  static const _swatches = [
-    'FFFF6B35',
-    'FFF97316',
-    'FFEF4444',
-    'FFEC4899',
-    'FFA855F7',
-    'FF6366F1',
-    'FF3B82F6',
-    'FF14B8A6',
-    'FF10B981',
-    'FF22C55E',
-  ];
 
   @override
   void initState() {
@@ -226,7 +216,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final previewColor = Color(int.parse(_selectedColor, radix: 16));
 
     return Scaffold(
@@ -270,127 +259,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cover photo
-              GestureDetector(
+              CoverPhotoPicker(
+                coverImage: _coverImage,
+                previewColor: previewColor,
                 onTap: _pickCover,
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: previewColor.withValues(alpha: 0.3), width: 1.5),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _coverImage != null
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.memory(_coverImage!, fit: BoxFit.cover),
-                            Positioned(
-                              bottom: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.edit_rounded,
-                                        size: 12, color: Colors.white),
-                                    SizedBox(width: 4),
-                                    Text('Change',
-                                        style: TextStyle(
-                                            color: Colors.white, fontSize: 11)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                previewColor,
-                                Color.lerp(
-                                    previewColor, Colors.orange.shade900, 0.4)!
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_photo_alternate_rounded,
-                                  size: 44,
-                                  color: Colors.white.withValues(alpha: 0.85)),
-                              const SizedBox(height: 8),
-                              Text('Tap to add cover photo',
-                                  style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.8),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500)),
-                              const SizedBox(height: 4),
-                              Text('Optional',
-                                  style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.5),
-                                      fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                ),
               ),
               const SizedBox(height: 20),
-              // Color picker
-              Text('Event Accent Color',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface.withValues(alpha: 0.6))),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                children: _swatches.map((hex) {
-                  final c = Color(int.parse(hex, radix: 16));
-                  final selected = _selectedColor == hex;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedColor = hex),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selected ? cs.onSurface : Colors.transparent,
-                          width: 2.5,
-                        ),
-                        boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                    color: c.withValues(alpha: 0.5),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2))
-                              ]
-                            : null,
-                      ),
-                      child: selected
-                          ? const Icon(Icons.check_rounded,
-                              size: 16, color: Colors.white)
-                          : null,
-                    ),
-                  );
-                }).toList(),
+              ColorSwatchPicker(
+                selectedColor: _selectedColor,
+                onColorSelected: (hex) => setState(() => _selectedColor = hex),
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -408,7 +285,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     ? 'Please enter a title'
                     : null,
               ),
-              Divider(color: cs.onSurface.withValues(alpha: 0.1)),
+              Divider(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _descCtrl,
@@ -427,193 +306,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     : null,
               ),
               const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _locationCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Location',
-                          prefixIcon: Icon(Icons.location_on_rounded),
-                          hintText: 'e.g. Block B, Auditorium',
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Please enter a location'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      // Date picker
-                      InkWell(
-                        onTap: _pickDate,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.calendar_today_rounded,
-                                  size: 20,
-                                  color: _selectedDate != null
-                                      ? cs.primary
-                                      : cs.onSurface.withValues(alpha: 0.45)),
-                              const SizedBox(width: 12),
-                              Text(
-                                _selectedDate != null
-                                    ? DateFormat('EEEE, MMMM d, y')
-                                        .format(_selectedDate!)
-                                    : 'Select Date',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: _selectedDate != null
-                                        ? cs.onSurface
-                                        : cs.onSurface.withValues(alpha: 0.45),
-                                    fontWeight: _selectedDate != null
-                                        ? FontWeight.w500
-                                        : FontWeight.w400),
-                              ),
-                              const Spacer(),
-                              Icon(Icons.chevron_right_rounded,
-                                  color: cs.onSurface.withValues(alpha: 0.3)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Time picker
-                      InkWell(
-                        onTap: _pickTime,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.schedule_rounded,
-                                  size: 20,
-                                  color: _selectedTime != null
-                                      ? cs.primary
-                                      : cs.onSurface.withValues(alpha: 0.45)),
-                              const SizedBox(width: 12),
-                              Text(
-                                _selectedTime != null
-                                    ? _selectedTime!.format(context)
-                                    : 'Select Time',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: _selectedTime != null
-                                        ? cs.onSurface
-                                        : cs.onSurface.withValues(alpha: 0.45),
-                                    fontWeight: _selectedTime != null
-                                        ? FontWeight.w500
-                                        : FontWeight.w400),
-                              ),
-                              const Spacer(),
-                              Icon(Icons.chevron_right_rounded,
-                                  color: cs.onSurface.withValues(alpha: 0.3)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              EventDateTimeCard(
+                locationCtrl: _locationCtrl,
+                selectedDate: _selectedDate,
+                selectedTime: _selectedTime,
+                onPickDate: _pickDate,
+                onPickTime: _pickTime,
               ),
               const SizedBox(height: 16),
-              // Additional photos
-              Row(
-                children: [
-                  Text('Additional Photos',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface.withValues(alpha: 0.6))),
-                  const SizedBox(width: 8),
-                  Text('${_additionalImages.length}/5',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: cs.onSurface.withValues(alpha: 0.4))),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ..._additionalImages.asMap().entries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.memory(entry.value,
-                                  width: 90, height: 90, fit: BoxFit.cover),
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: GestureDetector(
-                                onTap: () => setState(() =>
-                                    _additionalImages.removeAt(entry.key)),
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: const BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.close_rounded,
-                                      size: 14, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    if (_additionalImages.length < 5)
-                      GestureDetector(
-                        onTap: _pickAdditional,
-                        child: Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: cs.onSurface.withValues(alpha: 0.15),
-                                width: 1.5),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_photo_alternate_rounded,
-                                  color: cs.onSurface.withValues(alpha: 0.4),
-                                  size: 28),
-                              const SizedBox(height: 4),
-                              Text('Add',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color:
-                                          cs.onSurface.withValues(alpha: 0.4))),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              AdditionalPhotosGrid(
+                images: _additionalImages,
+                onAdd: _pickAdditional,
+                onRemoveAt: (index) =>
+                    setState(() => _additionalImages.removeAt(index)),
               ),
               const SizedBox(height: 40),
             ],
