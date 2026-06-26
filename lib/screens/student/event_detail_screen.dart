@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/event.dart';
+import 'widgets/info_chip.dart';
+import 'widgets/register_sheet.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -24,7 +26,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       context: context,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _RegisterSheet(event: widget.event),
+      builder: (_) => RegisterSheet(event: widget.event),
     );
     if (confirmed == true && mounted) {
       setState(() {
@@ -37,7 +39,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 10),
-              Text('You\'re registered! See you there.'),
+              Text("You're registered! See you there."),
             ],
           ),
           backgroundColor: const Color(0xFF22C55E),
@@ -57,9 +59,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ? Color(int.parse(widget.event.clubLogoColor!, radix: 16))
         : cs.primary;
 
-    final initials = widget.event.clubName.trim().split(' ').length >= 2
-        ? '${widget.event.clubName.trim().split(' ')[0][0]}${widget.event.clubName.trim().split(' ')[1][0]}'
-            .toUpperCase()
+    final nameParts = widget.event.clubName.trim().split(' ');
+    final initials = nameParts.length >= 2
+        ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
         : widget.event.clubName.substring(0, 2).toUpperCase();
 
     final sampleColors = [
@@ -72,6 +74,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          // ── App bar ────────────────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
@@ -111,8 +114,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1),
+                              color: Colors.white.withValues(alpha: 0.35)),
                         ),
                         child: Column(
                           children: [
@@ -138,6 +140,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                       ),
                     ),
+                    // Event label
                     Positioned(
                       left: 16,
                       bottom: 20,
@@ -145,8 +148,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFF97316).withValues(alpha: 0.88),
+                          color: const Color(0xFFF97316).withValues(alpha: 0.88),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Row(
@@ -170,6 +172,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           ),
+
+          // ── Body ───────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
@@ -216,7 +220,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _InfoChip(
+                        child: InfoChip(
                           icon: Icons.calendar_today_rounded,
                           label: DateFormat('MMM d, y')
                               .format(widget.event.eventDate),
@@ -225,7 +229,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _InfoChip(
+                        child: InfoChip(
                           icon: Icons.schedule_rounded,
                           label: DateFormat('h:mm a')
                               .format(widget.event.eventDate),
@@ -235,17 +239,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  _InfoChip(
+                  InfoChip(
                     icon: Icons.location_on_rounded,
                     label: widget.event.location,
                     color: const Color(0xFF22C55E),
                     expand: true,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'About this Event',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  ),
+                  // Description
+                  const Text('About this Event',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   Text(
                     widget.event.description,
@@ -293,6 +297,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ],
       ),
+
+      // ── Bottom bar ─────────────────────────────────────────────────────────
       bottomNavigationBar: Container(
         padding: EdgeInsets.fromLTRB(
             20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
@@ -332,175 +338,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               )
             : FilledButton.icon(
                 onPressed: _showRegisterSheet,
-                icon: const Icon(Icons.confirmation_number_rounded, size: 20),
+                icon:
+                    const Icon(Icons.confirmation_number_rounded, size: 20),
                 label: const Text('Register Now'),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 52),
                 ),
               ),
       ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool expand;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.expand = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final widget = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: color),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-    return expand ? SizedBox(width: double.infinity, child: widget) : widget;
-  }
-}
-
-class _RegisterSheet extends StatelessWidget {
-  final EventModel event;
-  const _RegisterSheet({required this.event});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF97316).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.confirmation_number_rounded,
-                color: Color(0xFFF97316), size: 32),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Register for Event',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            event.title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                _SheetInfoRow(
-                    icon: Icons.calendar_today_rounded,
-                    label:
-                        DateFormat('EEEE, MMMM d, y').format(event.eventDate)),
-                const SizedBox(height: 6),
-                _SheetInfoRow(
-                    icon: Icons.schedule_rounded,
-                    label: DateFormat('h:mm a').format(event.eventDate)),
-                const SizedBox(height: 6),
-                _SheetInfoRow(
-                    icon: Icons.location_on_rounded, label: event.location),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SheetInfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _SheetInfoRow({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon,
-            size: 14,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.7))),
-        ),
-      ],
     );
   }
 }
