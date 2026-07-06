@@ -10,6 +10,12 @@ import '../../widgets/base64_image.dart';
 import '../../widgets/identity_avatar.dart';
 import 'additional_photos_grid.dart';
 
+part 'club_profile/club_cover_card.dart';
+part 'club_profile/club_details_card.dart';
+part 'club_profile/club_gallery_card.dart';
+part 'club_profile/club_logo_card.dart';
+part 'club_profile/logo_color_dot.dart';
+
 class ClubProfileTab extends StatefulWidget {
   final ClubModel club;
   final ValueChanged<ClubModel>? onChanged;
@@ -161,7 +167,6 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final logoColor = Color(int.parse(_logoColor, radix: 16));
 
     return ListView(
@@ -172,300 +177,42 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Club Logo',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          ClubAvatar(
-                            color: logoColor,
-                            logoBase64: _logoImage == null
-                                ? null
-                                : base64Encode(_logoImage!),
-                            showBackground: _showLogoBackground,
-                            size: 72,
-                            borderRadius: 18,
-                            onTap: _logoImage == null
-                                ? _pickLogoImage
-                                : () => showBase64ImagePreview(
-                                      context,
-                                      data: base64Encode(_logoImage!),
-                                    ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                FilledButton.tonalIcon(
-                                  onPressed: _pickLogoImage,
-                                  icon: const Icon(
-                                      Icons.add_photo_alternate_rounded),
-                                  label: Text(_logoImage == null
-                                      ? 'Add logo'
-                                      : 'Change logo'),
-                                ),
-                                if (_logoImage != null)
-                                  IconButton.filledTonal(
-                                    onPressed: () =>
-                                        setState(() => _logoImage = null),
-                                    icon: const Icon(
-                                        Icons.delete_outline_rounded),
-                                    tooltip: 'Remove logo',
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        value: _showLogoBackground,
-                        onChanged: (value) =>
-                            setState(() => _showLogoBackground = value),
-                        title: const Text(
-                          'Show logo background',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Controls the colored shape behind the logo',
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      if (_showLogoBackground) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final colorHex in _logoColors)
-                              _LogoColorDot(
-                                color: Color(int.parse(colorHex, radix: 16)),
-                                selected: _logoColor == colorHex,
-                                onTap: () =>
-                                    setState(() => _logoColor = colorHex),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+              _ClubLogoCard(
+                logoColor: logoColor,
+                logoImage: _logoImage,
+                showLogoBackground: _showLogoBackground,
+                selectedLogoColor: _logoColor,
+                logoColors: _logoColors,
+                onPickLogoImage: _pickLogoImage,
+                onRemoveLogoImage: () => setState(() => _logoImage = null),
+                onShowLogoBackgroundChanged: (value) =>
+                    setState(() => _showLogoBackground = value),
+                onLogoColorChanged: (colorHex) =>
+                    setState(() => _logoColor = colorHex),
               ),
+        
               const SizedBox(height: 14),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Club Cover',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                ),
-                                Text(
-                                  'Tap the cover to preview it.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: cs.onSurface.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_clubImage != null)
-                            TextButton.icon(
-                              onPressed: () => showBase64ImagePreview(
-                                context,
-                                data: base64Encode(_clubImage!),
-                              ),
-                              icon: const Icon(Icons.open_in_full_rounded),
-                              label: const Text('Preview'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      GestureDetector(
-                        onTap: _clubImage == null
-                            ? _pickClubImage
-                            : () => showBase64ImagePreview(
-                                  context,
-                                  data: base64Encode(_clubImage!),
-                                ),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 7,
-                          child: Container(
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                colors: [
-                                  logoColor,
-                                  Color.lerp(logoColor, Colors.black, 0.35)!,
-                                ],
-                              ),
-                            ),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                if (_clubImage != null)
-                                  Image.memory(_clubImage!, fit: BoxFit.cover)
-                                else
-                                  Icon(
-                                    Icons.groups_rounded,
-                                    size: 84,
-                                    color:
-                                        Colors.white.withValues(alpha: 0.18),
-                                  ),
-                                Positioned(
-                                  right: 12,
-                                  bottom: 12,
-                                  child: GestureDetector(
-                                    onTap: _pickClubImage,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.55),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.photo_camera_rounded,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Change photo',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (_clubImage != null)
-                                  Positioned(
-                                    left: 12,
-                                    bottom: 12,
-                                    child: IconButton.filledTonal(
-                                      onPressed: () =>
-                                          setState(() => _clubImage = null),
-                                      icon: const Icon(
-                                          Icons.delete_outline_rounded),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _ClubCoverCard(
+                logoColor: logoColor,
+                clubImage: _clubImage,
+                onPickClubImage: _pickClubImage,
+                onRemoveClubImage: () => setState(() => _clubImage = null),
               ),
+        
               const SizedBox(height: 18),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Club Details',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _nameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Club Name',
-                          prefixIcon: Icon(Icons.badge_outlined),
-                        ),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'Club name is required'
-                                : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _descCtrl,
-                        minLines: 5,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          labelText: 'About Club',
-                          alignLabelWithHint: true,
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(bottom: 92),
-                            child: Icon(Icons.notes_rounded),
-                          ),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest
-                              .withValues(alpha: 0.45),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                        ),
-                        validator: (value) =>
-                            value == null || value.trim().length < 10
-                                ? 'Write at least 10 characters'
-                                : null,
-                      ),
-                    ],
-                  ),
-                ),
+              _ClubDetailsCard(
+                nameCtrl: _nameCtrl,
+                descCtrl: _descCtrl,
               ),
+        
               const SizedBox(height: 18),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: AdditionalPhotosGrid(
-                    images: _galleryImages,
-                    onAdd: _pickGalleryImage,
-                    onRemoveAt: (index) =>
-                        setState(() => _galleryImages.removeAt(index)),
-                  ),
-                ),
+              _ClubGalleryCard(
+                images: _galleryImages,
+                onAdd: _pickGalleryImage,
+                onRemoveAt: (index) =>
+                    setState(() => _galleryImages.removeAt(index)),
               ),
+        
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
@@ -490,46 +237,3 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   }
 }
 
-class _LogoColorDot extends StatelessWidget {
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _LogoColorDot({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.onSurface
-                : Colors.white.withValues(alpha: 0.8),
-            width: selected ? 2.5 : 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.24),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: selected
-            ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
-            : null,
-      ),
-    );
-  }
-}

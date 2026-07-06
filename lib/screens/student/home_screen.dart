@@ -24,6 +24,14 @@ import 'club_detail_screen.dart';
 import '../chat/share_to_chat_sheet.dart';
 import 'widgets/event_registration_dialog.dart';
 
+part 'home/load_more_event_card.dart';
+part 'home/greeting_card.dart';
+part 'home/empty_feed.dart';
+part 'home/home_events_section.dart';
+part 'home/home_posts_section.dart';
+part 'home/home_app_bar.dart';
+part 'home/home_feed_prioritizer.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -288,60 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  int _priorityForClub(
-    String clubId,
-    Set<String> followedIds,
-    String mode,
-  ) {
-    final isMember = _memberClubIds.contains(clubId);
-    final isFollowed = followedIds.contains(clubId);
-    if (mode == 'recent') return 0;
-    if (mode == 'followed_first') {
-      if (isFollowed) return 0;
-      if (isMember) return 1;
-      return 2;
-    }
-    if (isMember) return 0;
-    if (isFollowed) return 1;
-    return 2;
-  }
-
-  List<PostModel> _prioritizedPosts(
-    Set<String> followedIds,
-    String mode,
-  ) {
-    final visibleClubIds = {...followedIds, ..._memberClubIds};
-    final posts =
-        _dbPosts.where((post) => visibleClubIds.contains(post.clubId)).toList();
-    posts.sort((a, b) {
-      final priority = _priorityForClub(a.clubId, followedIds, mode)
-          .compareTo(_priorityForClub(b.clubId, followedIds, mode));
-      if (priority != 0) return priority;
-      return b.createdAt.compareTo(a.createdAt);
-    });
-    return posts;
-  }
-
-  List<EventModel> _prioritizedEvents(
-    Set<String> followedIds,
-    String mode,
-  ) {
-    final visibleClubIds = {...followedIds, ..._memberClubIds};
-    final events = _dbEvents
-        .where((event) => visibleClubIds.contains(event.clubId))
-        .toList();
-    events.sort((a, b) {
-      final priority = _priorityForClub(a.clubId, followedIds, mode)
-          .compareTo(_priorityForClub(b.clubId, followedIds, mode));
-      if (priority != 0) return priority;
-      return a.eventDate.compareTo(b.eventDate);
-    });
-    return events;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final user = context.watch<AuthProvider>().currentUser;
     final followProvider = context.watch<ClubFollowProvider>();
     final themeProvider = context.watch<ThemeProvider>();
@@ -349,10 +305,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasUnread = context.watch<NotificationProvider>().unreadCount > 0;
     final userId = user?.id ?? '';
     final followedIds = followProvider.getFollowedIds(userId);
-    final filteredPosts =
-        _prioritizedPosts(followedIds, themeProvider.postFeedPriority);
-    final events =
-        _prioritizedEvents(followedIds, themeProvider.eventFeedPriority);
+    final prioritizer = _HomeFeedPrioritizer(_memberClubIds);
+    final filteredPosts = prioritizer.posts(
+      _dbPosts,
+      followedIds,
+      themeProvider.postFeedPriority,
+    );
+    final events = prioritizer.events(
+      _dbEvents,
+      followedIds,
+      themeProvider.eventFeedPriority,
+    );
     final shownPosts = filteredPosts.take(_visiblePostCount).toList();
     final shownEvents = events.take(_visibleEventCount).toList();
     final hasMorePosts = filteredPosts.length > shownPosts.length;
@@ -362,46 +325,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final eventCarouselHeight = textScale > 1.1 ? 360.0 : 330.0;
 
-    // // Interleave filtered posts + events from followed clubs into one feed
-    // final List<dynamic> feed = [];
-    // for (int i = 0; i < filteredPosts.length || i < events.length; i++) {
-    //   if (i < filteredPosts.length) feed.add(filteredPosts[i]);
-    //   if (i < events.length) feed.add(events[i]);
-    // }
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: const UnilinkLogo(size: LogoSize.medium),
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const NotificationsScreen()),
-                ),
-              ),
-              if (hasUnread)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: cs.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+      appBar: _HomeAppBar(hasUnread: hasUnread),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         child: ListView(
@@ -413,216 +339,46 @@ class _HomeScreenState extends State<HomeScreen> {
               date: DateFormat('EEEE, MMMM d').format(DateTime.now()),
             ),
 
-            // Events Section
-            if (shownEvents.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Text(
-                'Upcoming Events',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+            _HomeEventsSection(
+              events: shownEvents,
+              hasMore: hasMoreEvents,
+              cardWidth: eventCardWidth,
+              carouselHeight: eventCarouselHeight,
+              onLoadMore: () => setState(() {
+                _visibleEventCount += 10;
+              }),
+              onOpenEvent: (event) => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EventDetailScreen(event: event),
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: eventCarouselHeight,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: shownEvents.length + (hasMoreEvents ? 1 : 0),
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    if (index == shownEvents.length) {
-                      return _LoadMoreEventCard(
-                        width: eventCardWidth,
-                        onTap: () => setState(() {
-                          _visibleEventCount += 10;
-                        }),
-                      );
-                    }
-                    final event = shownEvents[index];
-
-                    return SizedBox(
-                      width: eventCardWidth,
-                      child: EventCard(
-                        event: event,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EventDetailScreen(event: event),
-                          ),
-                        ),
-                        onRegister: () => _registerForEvent(event),
-                        onShare: () => _shareEvent(event),
-                        onClubTap: () => _openClub(event.clubId),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-
-            Text(
-              followedIds.isEmpty && _memberClubIds.isEmpty
-                  ? 'Discover clubs'
-                  : 'From your clubs',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
+              onRegister: _registerForEvent,
+              onShare: _shareEvent,
+              onClubTap: _openClub,
             ),
+        
 
-            const SizedBox(height: 12),
-
-            if (shownPosts.isEmpty)
-              _EmptyFeed()
-            else
-              ...[
-                ...shownPosts.map(
-                  (post) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: PostCard(
-                      post: post,
-                      isLiked: post.likedUserIds.contains(userId),
-                      isSaved: _savedPostIds.contains(post.id),
-                      onLike: () => _toggleLike(post),
-                      onComment: () => _showComments(post),
-                      onSave: () => _toggleSaved(post),
-                      onShare: () => _sharePost(post),
-                      onClubTap: () => _openClub(post.clubId),
-                      onTap: () => _openPostDetail(post),
-                    ),
-                  ),
-                ),
-                if (hasMorePosts)
-                  Center(
-                    child: OutlinedButton.icon(
-                      onPressed: () => setState(() {
-                        _visiblePostCount += 10;
-                      }),
-                      icon: const Icon(Icons.expand_more_rounded),
-                      label: const Text('Load more posts'),
-                    ),
-                  ),
-              ],
+            _HomePostsSection(
+              posts: shownPosts,
+              hasMore: hasMorePosts,
+              hasAnyClubContext:
+                  followedIds.isNotEmpty || _memberClubIds.isNotEmpty,
+              userId: userId,
+              savedPostIds: _savedPostIds,
+              onLoadMore: () => setState(() {
+                _visiblePostCount += 10;
+              }),
+              onOpenPost: _openPostDetail,
+              onLike: _toggleLike,
+              onComment: _showComments,
+              onSave: _toggleSaved,
+              onShare: _sharePost,
+              onClubTap: _openClub,
+            ),
+        
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _LoadMoreEventCard extends StatelessWidget {
-  final double width;
-  final VoidCallback onTap;
-
-  const _LoadMoreEventCard({required this.width, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: width,
-      child: Card(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.expand_more_rounded, color: cs.primary, size: 30),
-                const SizedBox(height: 8),
-                Text(
-                  'Load more events',
-                  style: TextStyle(
-                    color: cs.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GreetingCard extends StatelessWidget {
-  final String greeting;
-  final String name;
-  final String date;
-
-  const _GreetingCard(
-      {required this.greeting, required this.name, required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            cs.primary,
-            Color.lerp(cs.primary, const Color(0xFF8B5CF6), 0.6)!
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$greeting, $name!',
-            style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            date,
-            style: TextStyle(
-                fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.75),
-                fontWeight: FontWeight.w400),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyFeed extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      child: Column(
-        children: [
-          Icon(Icons.dynamic_feed_rounded,
-              size: 64, color: cs.onSurface.withValues(alpha: 0.2)),
-          const SizedBox(height: 16),
-          Text(
-            'Your feed is empty',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface.withValues(alpha: 0.5)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Follow some clubs to see their\nposts and events here',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 14, color: cs.onSurface.withValues(alpha: 0.4)),
-          ),
-        ],
       ),
     );
   }

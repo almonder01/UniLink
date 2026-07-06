@@ -18,14 +18,14 @@ class SectionLabel extends StatelessWidget {
   }
 }
 
-class MenuTile extends StatelessWidget {
+class ProfileMenuTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final Color? color;
   final bool showDot;
 
-  const MenuTile({
+  const ProfileMenuTile({
     super.key,
     required this.icon,
     required this.label,

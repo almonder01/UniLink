@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class MenuTile extends StatelessWidget {
+class PopupMenuTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color? color;
-  const MenuTile(this.icon, this.label, {super.key, this.color});
+  const PopupMenuTile(this.icon, this.label, {super.key, this.color});
 
   @override
   Widget build(BuildContext context) {

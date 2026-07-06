@@ -9,6 +9,10 @@ import '../../services/direct_chat_service.dart';
 import '../../widgets/identity_avatar.dart';
 import 'membership_requests_screen.dart';
 
+part 'members/empty_members_state.dart';
+part 'members/member_tile.dart';
+part 'members/members_header.dart';
+
 class MembersTab extends StatefulWidget {
   final ClubModel club;
   final ValueChanged<int>? onCountChanged;
@@ -266,8 +270,6 @@ class MembersTabState extends State<MembersTab> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     if (_loadingMembers) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -276,21 +278,7 @@ class MembersTabState extends State<MembersTab> {
       return Column(
         children: [
           _MembersHeader(club: widget.club),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_outline,
-                      size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
-                  const SizedBox(height: 12),
-                  Text('No members yet. Tap + to add one.',
-                      style:
-                          TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
-                ],
-              ),
-            ),
-          ),
+          const Expanded(child: _EmptyMembersState()),
         ],
       );
     }
@@ -308,92 +296,19 @@ class MembersTabState extends State<MembersTab> {
                 final m = _members[i];
                 final isManager = m['role'] == 'Manager';
                 final currentUserId = context.read<AuthProvider>().currentUser?.id;
-                return ListTile(
-                  leading: UserAvatar(
-                    photoBase64: m['photoBase64'] as String?,
-                    gender: m['gender'] as String?,
-                    radius: 20,
-                    backgroundColor: _avatarColor(m['name'] as String, i),
-                  ),
-                  title: Text(m['name'] as String,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(m['email'] as String),
-                  trailing: isManager
-                      ? Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: cs.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text('You',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w700)),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (m['uid'] != currentUserId)
-                              IconButton(
-                                tooltip: 'Message',
-                                icon: const Icon(Icons.chat_bubble_outline_rounded,
-                                    size: 20),
-                                onPressed: () => _openDirectChat(m),
-                              ),
-                            IconButton(
-                              tooltip: 'Remove member',
-                              icon: const Icon(Icons.person_remove_outlined,
-                                  color: Colors.red, size: 20),
-                              onPressed: () => _removeMember(m),
-                            ),
-                          ],
-                        ),
+                return _MemberTile(
+                  member: m,
+                  avatarColor: _avatarColor(m['name'] as String, i),
+                  isManager: isManager,
+                  canMessage: m['uid'] != currentUserId,
+                  onMessage: () => _openDirectChat(m),
+                  onRemove: () => _removeMember(m),
                 );
               },
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _MembersHeader extends StatelessWidget {
-  final ClubModel club;
-
-  const _MembersHeader({required this.club});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Members',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Membership requests',
-            icon: const Icon(Icons.how_to_reg_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MembershipRequestsScreen(club: club),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

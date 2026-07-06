@@ -15,6 +15,11 @@ import 'cover_photo_picker.dart';
 import 'event_datetime_card.dart';
 import 'event_location_picker_screen.dart';
 
+part 'create_event/event_fee_card.dart';
+part 'create_event/registration_options_card.dart';
+part 'create_event/create_event_app_bar.dart';
+part 'create_event/event_basic_info_section.dart';
+
 class CreateEventScreen extends StatefulWidget {
   final ClubModel club;
   final EventModel? existingEvent;
@@ -338,47 +343,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final previewColor = Color(int.parse(_selectedColor, radix: 16));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Event' : 'Create Event'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Icon(
-                      _isEditing
-                          ? Icons.save_rounded
-                          : Icons.event_available_rounded,
-                      size: 18,
-                    ),
-              label: Text(
-                _saving
-                    ? (_isEditing ? 'Saving...' : 'Creating...')
-                    : (_isEditing ? 'Save' : 'Create'),
-              ),
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                minimumSize: Size.zero,
-                textStyle:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
+      appBar: _CreateEventAppBar(
+        isEditing: _isEditing,
+        saving: _saving,
+        onSave: _save,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -398,58 +369,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 onColorSelected: (hex) => setState(() => _selectedColor = hex),
               ),
               const SizedBox(height: 20),
-              TextFormField(
-                controller: _titleCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                decoration: const InputDecoration(
-                  hintText: 'Event title...',
-                  border: InputBorder.none,
-                  fillColor: Colors.transparent,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Please enter a title'
-                    : null,
-              ),
-              Divider(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.1),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _descCtrl,
-                maxLines: null,
-                minLines: 4,
-                textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(fontSize: 15, height: 1.65),
-                decoration: InputDecoration(
-                  hintText: 'Describe this event...',
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                validator: (v) => (v == null || v.trim().length < 10)
-                    ? 'Please add a description (min 10 chars)'
-                    : null,
+              _EventBasicInfoSection(
+                titleCtrl: _titleCtrl,
+                descCtrl: _descCtrl,
               ),
               const SizedBox(height: 16),
               EventDateTimeCard(
@@ -494,207 +416,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               const SizedBox(height: 40),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EventFeeCard extends StatelessWidget {
-  final TextEditingController feeCtrl;
-  final String currency;
-  final ValueChanged<String?> onCurrencyChanged;
-
-  const _EventFeeCard({
-    required this.feeCtrl,
-    required this.currency,
-    required this.onCurrencyChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.payments_rounded,
-                      color: Color(0xFF14B8A6), size: 19),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Event Payment',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                SizedBox(
-                  width: 92,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: currency,
-                    decoration: const InputDecoration(labelText: 'Currency'),
-                    items: const [
-                      DropdownMenuItem(value: 'RM', child: Text('RM')),
-                      DropdownMenuItem(value: 'USD', child: Text(r'$')),
-                    ],
-                    onChanged: onCurrencyChanged,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: feeCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Amount',
-                      hintText: 'Leave empty if free',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'If an amount is set, students must upload a transfer receipt before registering.',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RegistrationOptionsCard extends StatelessWidget {
-  final TextEditingController capacityCtrl;
-  final TextEditingController externalFormCtrl;
-  final TextEditingController requirementPromptCtrl;
-  final bool requiresText;
-  final bool requiresFile;
-  final ValueChanged<bool> onRequiresTextChanged;
-  final ValueChanged<bool> onRequiresFileChanged;
-
-  const _RegistrationOptionsCard({
-    required this.capacityCtrl,
-    required this.externalFormCtrl,
-    required this.requirementPromptCtrl,
-    required this.requiresText,
-    required this.requiresFile,
-    required this.onRequiresTextChanged,
-    required this.onRequiresFileChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.fact_check_rounded,
-                      color: cs.primary, size: 19),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Registration Settings',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: capacityCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Max participants',
-                hintText: 'Leave empty for unlimited',
-                prefixIcon: Icon(Icons.groups_rounded),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: externalFormCtrl,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'External form link',
-                hintText: 'Optional Google Form link',
-                prefixIcon: Icon(Icons.link_rounded),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: requirementPromptCtrl,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Additional requirement',
-                hintText:
-                    'Optional: Tell students what answer or file you need, e.g. upload transfer receipt or write your team name.',
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 6),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: requiresText,
-              onChanged: onRequiresTextChanged,
-              title: const Text(
-                'Require written answer',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              secondary: const Icon(Icons.notes_rounded),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: requiresFile,
-              onChanged: onRequiresFileChanged,
-              title: const Text(
-                'Require uploaded file',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              secondary: const Icon(Icons.upload_file_rounded),
-            ),
-            Text(
-              'If any requirement is enabled, registrations stay pending until the manager approves them.',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -4,6 +4,10 @@ import '../models/post.dart';
 import 'base64_image.dart';
 import 'identity_avatar.dart';
 
+part 'post_card/type_chip.dart';
+part 'post_card/tag_chip.dart';
+part 'post_card/action_chip.dart';
+
 Color hexToColor(String hex) =>
     Color(int.parse('FF$hex'.substring(hex.length > 6 ? 2 : 0), radix: 16) |
         (hex.length == 8 ? 0 : 0xFF000000));
@@ -205,111 +209,6 @@ class PostCard extends StatelessWidget {
                     ],
                   ),
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TypeChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _TypeChip(
-      {required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  letterSpacing: 0.6)),
-        ],
-      ),
-    );
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _TagChip(
-      {required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
-  final VoidCallback? onTap;
-
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final effectiveColor = color ?? cs.onSurface.withValues(alpha: 0.5);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: effectiveColor),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: effectiveColor,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ],

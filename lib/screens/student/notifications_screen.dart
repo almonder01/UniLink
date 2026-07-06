@@ -17,6 +17,10 @@ import 'event_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'post_detail_screen.dart';
 
+part 'notifications/empty_notifications.dart';
+part 'notifications/notification_section.dart';
+part 'notifications/notification_tile.dart';
+
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
@@ -207,6 +211,46 @@ class NotificationsScreen extends StatelessWidget {
   List<NotificationModel> _older(List<NotificationModel> items) =>
       items.where((n) => DateTime.now().difference(n.time).inDays > 1).toList();
 
+  VoidCallback _tapFor(
+    BuildContext context,
+    NotificationProvider provider,
+    NotificationModel notification,
+  ) {
+    if (_opensEvent(notification.type)) {
+      return () => _openEvent(context, provider, notification);
+    }
+    if (_opensPost(notification.type)) {
+      return () => _openPost(context, provider, notification);
+    }
+    if (_opensDirectMessage(notification.type)) {
+      return () => _openDirectMessage(context, provider, notification);
+    }
+    if (_opensClub(notification.type)) {
+      return () => _openClub(context, provider, notification);
+    }
+    return () => provider.markRead(notification.id);
+  }
+
+  VoidCallback? _joinRoomFor(
+    BuildContext context,
+    NotificationProvider provider,
+    NotificationModel notification,
+  ) {
+    if (notification.type != 'room_invite') return null;
+    return () => _joinRoom(context, provider, notification);
+  }
+
+  VoidCallback? _uploadReceiptFor(
+    BuildContext context,
+    NotificationProvider provider,
+    NotificationModel notification,
+  ) {
+    if (notification.type != 'club_payment_request' || notification.isRead) {
+      return null;
+    }
+    return () => _uploadPaymentReceipt(context, provider, notification);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -243,225 +287,42 @@ class NotificationsScreen extends StatelessWidget {
         ],
       ),
       body: notifications.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_none_rounded,
-                      size: 60,
-                      color: cs.onSurface.withValues(alpha: 0.2)),
-                  const SizedBox(height: 12),
-                  Text('No notifications yet',
-                      style: TextStyle(
-                          fontSize: 16,
-                          color: cs.onSurface.withValues(alpha: 0.4))),
-                ],
-              ),
-            )
+          ? const _EmptyNotifications()
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                if (today.isNotEmpty) ...[
-                  const _SectionHeader(label: 'Today'),
-                  ...today.map((n) => _NotifTile(
-                        notif: n,
-                        icon: _iconFor(n.type),
-                        timeLabel: _timeAgo(n.time),
-                        onTap: _opensEvent(n.type)
-                            ? () => _openEvent(context, provider, n)
-                            : _opensPost(n.type)
-                                ? () => _openPost(context, provider, n)
-                                : _opensDirectMessage(n.type)
-                                    ? () => _openDirectMessage(
-                                          context,
-                                          provider,
-                                          n,
-                                        )
-                                    : _opensClub(n.type)
-                                        ? () => _openClub(context, provider, n)
-                            : () => provider.markRead(n.id),
-                        onJoinRoom: n.type == 'room_invite'
-                            ? () => _joinRoom(context, provider, n)
-                            : null,
-                        onUploadReceipt: n.type == 'club_payment_request' &&
-                                !n.isRead
-                            ? () => _uploadPaymentReceipt(context, provider, n)
-                            : null,
-                      )),
-                ],
-                if (yesterday.isNotEmpty) ...[
-                  const _SectionHeader(label: 'Yesterday'),
-                  ...yesterday.map((n) => _NotifTile(
-                        notif: n,
-                        icon: _iconFor(n.type),
-                        timeLabel: _timeAgo(n.time),
-                        onTap: _opensEvent(n.type)
-                            ? () => _openEvent(context, provider, n)
-                            : _opensPost(n.type)
-                                ? () => _openPost(context, provider, n)
-                                : _opensDirectMessage(n.type)
-                                    ? () => _openDirectMessage(
-                                          context,
-                                          provider,
-                                          n,
-                                        )
-                                    : _opensClub(n.type)
-                                        ? () => _openClub(context, provider, n)
-                            : () => provider.markRead(n.id),
-                        onJoinRoom: n.type == 'room_invite'
-                            ? () => _joinRoom(context, provider, n)
-                            : null,
-                        onUploadReceipt: n.type == 'club_payment_request' &&
-                                !n.isRead
-                            ? () => _uploadPaymentReceipt(context, provider, n)
-                            : null,
-                      )),
-                ],
-                if (older.isNotEmpty) ...[
-                  const _SectionHeader(label: 'Earlier'),
-                  ...older.map((n) => _NotifTile(
-                        notif: n,
-                        icon: _iconFor(n.type),
-                        timeLabel: _timeAgo(n.time),
-                        onTap: _opensEvent(n.type)
-                            ? () => _openEvent(context, provider, n)
-                            : _opensPost(n.type)
-                                ? () => _openPost(context, provider, n)
-                                : _opensDirectMessage(n.type)
-                                    ? () => _openDirectMessage(
-                                          context,
-                                          provider,
-                                          n,
-                                        )
-                                    : _opensClub(n.type)
-                                        ? () => _openClub(context, provider, n)
-                            : () => provider.markRead(n.id),
-                        onJoinRoom: n.type == 'room_invite'
-                            ? () => _joinRoom(context, provider, n)
-                            : null,
-                        onUploadReceipt: n.type == 'club_payment_request' &&
-                                !n.isRead
-                            ? () => _uploadPaymentReceipt(context, provider, n)
-                            : null,
-                      )),
-                ],
+                _NotificationSection(
+                  label: 'Today',
+                  items: today,
+                  iconFor: _iconFor,
+                  timeAgo: _timeAgo,
+                  onTapFor: (n) => _tapFor(context, provider, n),
+                  onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
+                  onUploadReceiptFor: (n) =>
+                      _uploadReceiptFor(context, provider, n),
+                ),
+                _NotificationSection(
+                  label: 'Yesterday',
+                  items: yesterday,
+                  iconFor: _iconFor,
+                  timeAgo: _timeAgo,
+                  onTapFor: (n) => _tapFor(context, provider, n),
+                  onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
+                  onUploadReceiptFor: (n) =>
+                      _uploadReceiptFor(context, provider, n),
+                ),
+                _NotificationSection(
+                  label: 'Earlier',
+                  items: older,
+                  iconFor: _iconFor,
+                  timeAgo: _timeAgo,
+                  onTapFor: (n) => _tapFor(context, provider, n),
+                  onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
+                  onUploadReceiptFor: (n) =>
+                      _uploadReceiptFor(context, provider, n),
+                ),
               ],
             ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-        ),
-      ),
-    );
-  }
-}
-
-class _NotifTile extends StatelessWidget {
-  final NotificationModel notif;
-  final IconData icon;
-  final String timeLabel;
-  final VoidCallback onTap;
-  final VoidCallback? onJoinRoom;
-  final VoidCallback? onUploadReceipt;
-
-  const _NotifTile({
-    required this.notif,
-    required this.icon,
-    required this.timeLabel,
-    required this.onTap,
-    this.onJoinRoom,
-    this.onUploadReceipt,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final color = Color(int.parse(notif.color, radix: 16));
-
-    return Container(
-      color: notif.isRead ? null : cs.primary.withValues(alpha: 0.04),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        title: Text(
-          notif.title,
-          style: TextStyle(
-              fontSize: 14,
-              fontWeight: notif.isRead ? FontWeight.w500 : FontWeight.w700),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 2),
-            Text(
-              notif.body,
-              style: TextStyle(
-                  fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              timeLabel,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: cs.onSurface.withValues(alpha: 0.4),
-                  fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        trailing: onJoinRoom != null || onUploadReceipt != null
-            ? FilledButton.tonal(
-                onPressed: onJoinRoom ?? onUploadReceipt,
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                child: Text(onJoinRoom != null ? 'Join' : 'Upload'),
-              )
-            : !notif.isRead
-                ? Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  )
-                : null,
-      ),
     );
   }
 }
