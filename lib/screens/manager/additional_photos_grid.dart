@@ -28,7 +28,7 @@ class AdditionalPhotosGrid extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface.withValues(alpha: 0.6))),
             const SizedBox(width: 8),
-            Text('${images.length}/5',
+            Text('${images.length}/6',
                 style: TextStyle(
                     fontSize: 12, color: cs.onSurface.withValues(alpha: 0.4))),
           ],
@@ -67,7 +67,7 @@ class AdditionalPhotosGrid extends StatelessWidget {
                   ),
                 );
               }),
-              if (images.length < 5)
+              if (images.length < 6)
                 GestureDetector(
                   onTap: onAdd,
                   child: Container(

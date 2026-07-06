@@ -91,15 +91,29 @@ class PostsTabState extends State<PostsTab> {
     if (result != null) _loadPosts();
   }
 
-  RelativeRect _menuPosition(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return RelativeRect.fromLTRB(size.width - 160, 100, 16, 0);
+  RelativeRect _menuPosition(BuildContext anchorContext) {
+    final buttonBox = anchorContext.findRenderObject() as RenderBox;
+    final overlayBox = Navigator.of(anchorContext)
+        .overlay!
+        .context
+        .findRenderObject() as RenderBox;
+    final topLeft =
+        buttonBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    return RelativeRect.fromRect(
+      Rect.fromLTWH(
+        topLeft.dx,
+        topLeft.dy,
+        buttonBox.size.width,
+        buttonBox.size.height,
+      ),
+      Offset.zero & overlayBox.size,
+    );
   }
 
-  void _showPostMenu(BuildContext context, PostModel post) {
+  void _showPostMenu(BuildContext anchorContext, PostModel post) {
     showMenu<String>(
-      context: context,
-      position: _menuPosition(context),
+      context: anchorContext,
+      position: _menuPosition(anchorContext),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       items: const [
         PopupMenuItem(
@@ -154,7 +168,7 @@ class PostsTabState extends State<PostsTab> {
               top: 4,
               right: 4,
               child: ThreeDotButton(
-                onTap: () => _showPostMenu(ctx, post),
+                onTap: (buttonContext) => _showPostMenu(buttonContext, post),
               ),
             ),
           ],

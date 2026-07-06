@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ThreeDotButton extends StatelessWidget {
-  final VoidCallback onTap;
+  final ValueChanged<BuildContext> onTap;
   const ThreeDotButton({super.key, required this.onTap});
 
   @override
@@ -10,7 +10,7 @@ class ThreeDotButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
+        onTap: () => onTap(context),
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/event.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/event_service.dart';
+import '../../widgets/base64_image.dart';
+import '../../widgets/event_map_preview.dart';
+import '../../widgets/identity_avatar.dart';
+import '../../widgets/media_gallery.dart';
 import 'widgets/info_chip.dart';
-import 'widgets/register_sheet.dart';
+import 'widgets/event_registration_dialog.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -21,14 +28,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _isRegistered = widget.event.isRegistered;
   }
 
-  Future<void> _showRegisterSheet() async {
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => RegisterSheet(event: widget.event),
+  Future<void> _confirmRegistration() async {
+    final confirmed = await showEventRegistrationDialog(
+      context,
+      event: widget.event,
     );
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user == null) return;
+      try {
+        await EventService().registerForEvent(event: widget.event, user: user);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
       setState(() {
         _isRegistered = true;
         widget.event.isRegistered = true;
@@ -59,18 +79,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ? Color(int.parse(widget.event.clubLogoColor!, radix: 16))
         : cs.primary;
 
-    final nameParts = widget.event.clubName.trim().split(' ');
-    final initials = nameParts.length >= 2
-        ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
-        : widget.event.clubName.substring(0, 2).toUpperCase();
-
-    final sampleColors = [
-      const Color(0xFFF97316),
-      const Color(0xFF6366F1),
-      const Color(0xFF22C55E),
-      const Color(0xFFA855F7),
-    ];
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -93,7 +101,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ),
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
+                    if (widget.event.coverImageBase64 != null) ...[
+                      Base64Image(data: widget.event.coverImageBase64!),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.black.withValues(alpha: 0.08),
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => showBase64ImagePreview(
+                              context,
+                              data: widget.event.coverImageBase64!,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     Positioned(
                       right: -20,
                       bottom: -20,
@@ -183,14 +218,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   // Club row
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: logoColor,
-                        child: Text(initials,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                      ClubAvatar(
+                        color: logoColor,
+                        logoBase64: widget.event.clubLogoImageBase64,
+                        showBackground: widget.event.clubShowLogoBackground,
+                        size: 40,
+                        borderRadius: 12,
                       ),
                       const SizedBox(width: 10),
                       Column(
@@ -245,6 +278,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     color: const Color(0xFF22C55E),
                     expand: true,
                   ),
+                  if (widget.event.latitude != null &&
+                      widget.event.longitude != null) ...[
+                    const SizedBox(height: 12),
+                    EventMapPreview(
+                      latitude: widget.event.latitude!,
+                      longitude: widget.event.longitude!,
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   // Description
                   const Text('About this Event',
@@ -264,33 +305,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       style:
                           TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: sampleColors.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (_, i) => Container(
-                        width: 100,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              sampleColors[i],
-                              Color.lerp(sampleColors[i], Colors.black, 0.25)!,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.image_rounded,
-                              color: Colors.white.withValues(alpha: 0.4),
-                              size: 30),
-                        ),
-                      ),
-                    ),
-                  ),
+                  MediaGallery(images: widget.event.photoBase64List),
                 ],
               ),
             ),
@@ -337,7 +352,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               )
             : FilledButton.icon(
-                onPressed: _showRegisterSheet,
+                onPressed: _confirmRegistration,
                 icon:
                     const Icon(Icons.confirmation_number_rounded, size: 20),
                 label: const Text('Register Now'),

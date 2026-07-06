@@ -44,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
         studentId: studentId,
         email: email,
         role: role,
+        gender: gender,
       );
       // Write profile in background — don't block navigation
       _db.collection('profiles').doc(cred.user!.uid).set({
@@ -53,6 +54,8 @@ class AuthProvider extends ChangeNotifier {
         'email': email,
         'role': role,
         'gender': gender,
+        'cover_color': 'FF6366F1',
+        'show_in_club_members': true,
       }).catchError((_) {});
       ClubService().seedIfEmpty().catchError((_) {});
       return role;
@@ -107,14 +110,39 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateProfile({String? name, String? major}) async {
+  Future<void> updateProfile({
+    String? name,
+    String? major,
+    String? gender,
+    String? photoBase64,
+    String? coverImageBase64,
+    String? coverColor,
+    bool? showInClubMembers,
+  }) async {
     if (_currentUser == null) return;
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
     if (major != null) updates['major'] = major;
+    if (gender != null) updates['gender'] = gender;
+    if (photoBase64 != null) updates['photo_base64'] = photoBase64;
+    if (coverImageBase64 != null) {
+      updates['cover_image_base64'] = coverImageBase64;
+    }
+    if (coverColor != null) updates['cover_color'] = coverColor;
+    if (showInClubMembers != null) {
+      updates['show_in_club_members'] = showInClubMembers;
+    }
     if (updates.isEmpty) return;
     await _db.collection('profiles').doc(_currentUser!.id).update(updates);
-    _currentUser = _currentUser!.copyWith(name: name, major: major);
+    _currentUser = _currentUser!.copyWith(
+      name: name,
+      major: major,
+      gender: gender,
+      photoBase64: photoBase64,
+      coverImageBase64: coverImageBase64,
+      coverColor: coverColor,
+      showInClubMembers: showInClubMembers,
+    );
     notifyListeners();
   }
 

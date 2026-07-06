@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -9,6 +10,8 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tp = context.watch<ThemeProvider>();
+    final auth = context.watch<AuthProvider>();
+    final user = auth.currentUser;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -60,6 +63,40 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const _SectionHeader('Privacy'),
+          const SizedBox(height: 10),
+          Card(
+            child: SwitchListTile(
+              secondary: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.visibility_rounded,
+                    color: cs.primary, size: 18),
+              ),
+              title: const Text(
+                'Show me in club member lists',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Students can see your name in clubs you follow',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+              value: user?.showInClubMembers ?? true,
+              onChanged: user == null
+                  ? null
+                  : (value) => auth.updateProfile(showInClubMembers: value),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             ),
           ),
           const SizedBox(height: 24),

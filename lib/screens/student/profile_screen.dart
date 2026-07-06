@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../../models/club.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/club_follow_provider.dart';
 import '../../providers/club_provider.dart';
+import '../../widgets/identity_avatar.dart';
 import 'club_detail_screen.dart';
 import 'settings_screen.dart';
 import 'about_screen.dart';
 import 'support_screen.dart';
+import 'saved_posts_screen.dart';
 import 'widgets/confirm_sheet.dart';
 import 'widgets/followed_club_tile.dart';
 import 'widgets/profile_widgets.dart';
@@ -21,7 +25,20 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _majorCtrl = TextEditingController();
+  final _picker = ImagePicker();
   bool _editingMajor = false;
+  bool _mediaInitialized = false;
+  String? _profilePhotoBase64;
+  String? _coverPhotoBase64;
+
+  static const _coverColors = [
+    'FF6366F1',
+    'FF14B8A6',
+    'FFF97316',
+    'FF22C55E',
+    'FFA855F7',
+    'FFEF4444',
+  ];
 
   @override
   void didChangeDependencies() {
@@ -29,6 +46,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.read<AuthProvider>().currentUser;
     if (user != null && _majorCtrl.text.isEmpty) {
       _majorCtrl.text = user.major ?? '';
+    }
+    if (user != null && !_mediaInitialized) {
+      _profilePhotoBase64 = user.photoBase64;
+      _coverPhotoBase64 = user.coverImageBase64;
+      _mediaInitialized = true;
     }
   }
 
@@ -77,6 +99,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Color _colorFromHex(String hex) {
+    final normalized = hex.length == 8 ? hex : 'FF$hex';
+    return Color(int.parse(normalized, radix: 16));
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 700,
+      imageQuality: 72,
+    );
+    if (file == null) return;
+    final encoded = base64Encode(await file.readAsBytes());
+    setState(() => _profilePhotoBase64 = encoded);
+    if (!mounted) return;
+    await context.read<AuthProvider>().updateProfile(photoBase64: encoded);
+  }
+
+  Future<void> _removeProfilePhoto() async {
+    setState(() => _profilePhotoBase64 = '');
+    await context.read<AuthProvider>().updateProfile(photoBase64: '');
+  }
+
+  Future<void> _pickCoverPhoto() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 70,
+    );
+    if (file == null) return;
+    final encoded = base64Encode(await file.readAsBytes());
+    setState(() => _coverPhotoBase64 = encoded);
+    if (!mounted) return;
+    await context.read<AuthProvider>().updateProfile(coverImageBase64: encoded);
+  }
+
+  Future<void> _removeCoverPhoto() async {
+    setState(() => _coverPhotoBase64 = '');
+    await context.read<AuthProvider>().updateProfile(coverImageBase64: '');
+  }
+
+  Future<void> _setCoverColor(String colorHex) async {
+    await context.read<AuthProvider>().updateProfile(coverColor: colorHex);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -88,6 +155,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final followedIds = followProvider.getFollowedIds(user.id);
     final followedClubs =
         allClubs.where((c) => followedIds.contains(c.id)).toList();
+    final coverColor = _colorFromHex(user.coverColor);
+    final coverBytes = decodeBase64Image(_coverPhotoBase64);
+    final hasCoverPhoto = coverBytes != null;
+    final hasProfilePhoto = (_profilePhotoBase64 ?? '').isNotEmpty;
 
     return Scaffold(
       body: CustomScrollView(
@@ -96,10 +167,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SliverToBoxAdapter(
             child: Container(
               decoration: BoxDecoration(
+                image: hasCoverPhoto
+                    ? DecorationImage(
+                        image: MemoryImage(coverBytes),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withValues(alpha: 0.32),
+                          BlendMode.darken,
+                        ),
+                      )
+                    : null,
                 gradient: LinearGradient(
                   colors: [
-                    cs.primary,
-                    Color.lerp(cs.primary, const Color(0xFF8B5CF6), 0.6)!,
+                    coverColor,
+                    Color.lerp(coverColor, const Color(0xFF111827), 0.35)!,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -109,41 +190,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   20, MediaQuery.of(context).padding.top + 24, 20, 28),
               child: Column(
                 children: [
-                  Stack(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              width: 2.5),
+                      if (hasCoverPhoto)
+                        IconButton.filledTonal(
+                          onPressed: _removeCoverPhoto,
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          tooltip: 'Remove cover',
                         ),
-                        child: Center(
-                          child: Image.asset(
-                            user.gender == 'female'
-                                ? 'assets/images/female.png'
-                                : 'assets/images/male.png',
-                            width: 52,
-                            height: 52,
-                          ),
+                      const SizedBox(width: 6),
+                      IconButton.filled(
+                        onPressed: _pickCoverPhoto,
+                        icon: const Icon(Icons.photo_camera_rounded),
+                        tooltip: 'Change cover',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      GestureDetector(
+                        onTap: _pickProfilePhoto,
+                        child: UserAvatar(
+                          photoBase64: _profilePhotoBase64,
+                          gender: user.gender,
+                          radius: 46,
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.22),
+                          borderColor: Colors.white.withValues(alpha: 0.72),
                         ),
                       ),
                       Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                        right: -2,
+                        bottom: -2,
+                        child: SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton.filled(
+                            padding: EdgeInsets.zero,
+                            onPressed: _pickProfilePhoto,
+                            icon: const Icon(Icons.edit_rounded, size: 16),
                           ),
-                          child: Icon(Icons.edit_rounded,
-                              size: 14, color: cs.primary),
                         ),
                       ),
+                      if (hasProfilePhoto)
+                        Positioned(
+                          left: -2,
+                          top: -2,
+                          child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: IconButton.filledTonal(
+                              padding: EdgeInsets.zero,
+                              onPressed: _removeProfilePhoto,
+                              icon: const Icon(Icons.close_rounded, size: 15),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -168,6 +273,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 13,
                         color: Colors.white.withValues(alpha: 0.65)),
                   ),
+                  if (!hasCoverPhoto) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        for (final colorHex in _coverColors)
+                          _CoverColorDot(
+                            color: _colorFromHex(colorHex),
+                            selected: user.coverColor == colorHex,
+                            onTap: () => _setCoverColor(colorHex),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -241,6 +362,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: DropdownButtonFormField<String>(
+                        initialValue:
+                            user.gender == 'female' || user.gender == 'male'
+                                ? user.gender
+                                : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Gender',
+                          prefixIcon: Icon(Icons.people_outline_rounded),
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        items: [
+                          DropdownMenuItem(
+                            value: 'male',
+                            child: Row(
+                              children: [
+                                Icon(Icons.male_rounded, color: cs.primary),
+                                const SizedBox(width: 10),
+                                const Text('Male'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'female',
+                            child: Row(
+                              children: [
+                                Icon(Icons.female_rounded, color: cs.primary),
+                                const SizedBox(width: 10),
+                                const Text('Female'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) async {
+                          if (value == null) return;
+                          await context
+                              .read<AuthProvider>()
+                              .updateProfile(gender: value);
+                        },
                       ),
                     ),
                   ),
@@ -322,6 +489,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         MenuTile(
+                          icon: Icons.bookmark_rounded,
+                          label: 'Saved Posts',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SavedPostsScreen(),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        MenuTile(
                           icon: Icons.settings_rounded,
                           label: 'Settings',
                           onTap: () => Navigator.push(
@@ -378,6 +556,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CoverColorDot extends StatelessWidget {
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CoverColorDot({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: selected ? 0.95 : 0.45),
+            width: selected ? 3 : 1.5,
+          ),
+        ),
+        child: selected
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 15)
+            : null,
       ),
     );
   }

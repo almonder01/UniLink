@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../models/club.dart';
 import '../../models/post.dart';
 import '../../services/database_service.dart';
@@ -11,7 +14,6 @@ import 'cover_photo_picker.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final ClubModel club;
-  /// Pass an existing post to enter edit mode.
   final PostModel? existingPost;
 
   const CreatePostScreen({
@@ -28,24 +30,28 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+  final _picker = ImagePicker();
+
   bool _saving = false;
   String _selectedColor = 'FF6366F1';
   Uint8List? _coverImage;
   final List<Uint8List> _additionalImages = [];
-  final _picker = ImagePicker();
 
   bool get _isEditing => widget.existingPost != null;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill fields if editing
-    if (_isEditing) {
-      final p = widget.existingPost!;
-      _titleCtrl.text = p.title;
-      _bodyCtrl.text = p.description;
-      _selectedColor = p.coverColor;
-    }
+    final post = widget.existingPost;
+    if (post == null) return;
+
+    _titleCtrl.text = post.title;
+    _bodyCtrl.text = post.description;
+    _selectedColor = post.coverColor;
+    _coverImage = _decodeImage(post.coverImageBase64);
+    _additionalImages.addAll(
+      post.photoBase64List.map(_decodeImage).whereType<Uint8List>().take(5),
+    );
   }
 
   @override
@@ -55,11 +61,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
+  Uint8List? _decodeImage(String? image) {
+    if (image == null || image.isEmpty) return null;
+    try {
+      return base64Decode(image);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _pickCover() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1200,
-      imageQuality: 80,
+      maxWidth: 900,
+      imageQuality: 70,
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
@@ -75,8 +90,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 800,
-      imageQuality: 75,
+      maxWidth: 640,
+      imageQuality: 65,
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
@@ -87,47 +102,37 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
 
+    final coverImageBase64 =
+        _coverImage == null ? null : base64Encode(_coverImage!);
+    final photoBase64List =
+        _additionalImages.map((bytes) => base64Encode(bytes)).toList();
+
     try {
+      final existing = widget.existingPost;
+      final post = PostModel(
+        id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: _titleCtrl.text.trim(),
+        description: _bodyCtrl.text.trim(),
+        clubId: existing?.clubId ?? widget.club.id,
+        clubName: existing?.clubName ?? widget.club.name,
+        clubLogoColor: existing?.clubLogoColor ?? widget.club.logoColor,
+        clubLogoImageBase64:
+            existing?.clubLogoImageBase64 ?? widget.club.logoImageBase64,
+        clubShowLogoBackground:
+            existing?.clubShowLogoBackground ?? widget.club.showLogoBackground,
+        coverColor: _selectedColor,
+        coverImageBase64: coverImageBase64,
+        photoBase64List: photoBase64List,
+        createdAt: existing?.createdAt ?? DateTime.now(),
+        likedUserIds: existing?.likedUserIds ?? const [],
+        likeCount: existing?.likeCount ?? 0,
+        commentCount: existing?.commentCount ?? 0,
+      );
+
       if (_isEditing) {
-        // ── Update existing post ──────────────────────────────────────────
-        final updated = widget.existingPost!.copyWith(
-          title: _titleCtrl.text.trim(),
-          description: _bodyCtrl.text.trim(),
-          coverColor: _selectedColor,
-        );
-        await DatabaseService().updatePost(updated);
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Post updated successfully!'),
-            ]),
-            backgroundColor: const Color(0xFF22C55E),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        Navigator.pop(context, updated);
+        await DatabaseService().updatePost(post);
       } else {
-        // ── Create new post ───────────────────────────────────────────────
-        final postId = DateTime.now().millisecondsSinceEpoch.toString();
-        final post = PostModel(
-          id: postId,
-          title: _titleCtrl.text.trim(),
-          description: _bodyCtrl.text.trim(),
-          clubId: widget.club.id,
-          clubName: widget.club.name,
-          clubLogoColor: widget.club.logoColor,
-          coverColor: _selectedColor,
-          createdAt: DateTime.now(),
-        );
-
         await DatabaseService().insertPost(post);
-
         NotificationService()
             .notifyFollowers(
               clubId: widget.club.id,
@@ -135,26 +140,28 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               body: post.title,
               type: 'post',
               color: widget.club.logoColor,
-              refId: postId,
+              refId: post.id,
             )
             .catchError((_) {});
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Post published successfully!'),
-            ]),
-            backgroundColor: const Color(0xFF22C55E),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        Navigator.pop(context, post);
       }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 10),
+            Text(_isEditing
+                ? 'Post updated successfully!'
+                : 'Post published successfully!'),
+          ]),
+          backgroundColor: const Color(0xFF22C55E),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      Navigator.pop(context, post);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -183,15 +190,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Icon(
-                      _isEditing
-                          ? Icons.save_rounded
-                          : Icons.publish_rounded,
-                      size: 18),
-              label: Text(_saving
-                  ? (_isEditing ? 'Saving...' : 'Publishing...')
-                  : (_isEditing ? 'Save' : 'Publish')),
+                      _isEditing ? Icons.save_rounded : Icons.publish_rounded,
+                      size: 18,
+                    ),
+              label: Text(
+                _saving
+                    ? (_isEditing ? 'Saving...' : 'Publishing...')
+                    : (_isEditing ? 'Save' : 'Publish'),
+              ),
               style: FilledButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -226,8 +237,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               TextFormField(
                 controller: _titleCtrl,
                 textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 decoration: const InputDecoration(
                   hintText: 'Post title...',
                   border: InputBorder.none,
@@ -246,11 +257,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 minLines: 6,
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(fontSize: 15, height: 1.65),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Write something amazing...',
-                  border: InputBorder.none,
-                  fillColor: Colors.transparent,
-                  contentPadding: EdgeInsets.zero,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
                 validator: (v) => (v == null || v.trim().length < 10)
                     ? 'Please write at least 10 characters'

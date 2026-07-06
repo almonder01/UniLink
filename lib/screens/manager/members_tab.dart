@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/club.dart';
+import '../../widgets/identity_avatar.dart';
 
 class MembersTab extends StatefulWidget {
   final ClubModel club;
@@ -68,6 +69,8 @@ class MembersTabState extends State<MembersTab> {
             'uid': doc.id,
             'name': d['name'] as String? ?? 'Unknown',
             'email': d['email'] as String? ?? '',
+            'photoBase64': d['photo_base64'] as String? ?? '',
+            'gender': d['gender'] as String? ?? 'male',
             'role': isManager ? 'Manager' : 'Member',
           });
         }
@@ -148,7 +151,7 @@ class MembersTabState extends State<MembersTab> {
 
     try {
       await _addMemberByEmail(email);
-      if (!mounted) return;
+      if (!mounted || !dialogContext.mounted) return;
       Navigator.pop(dialogContext);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('$email added successfully!'),
@@ -161,7 +164,7 @@ class MembersTabState extends State<MembersTab> {
         behavior: SnackBarBehavior.floating,
       ));
     } finally {
-      if (mounted) {
+      if (mounted && dialogContext.mounted) {
         setState(() => _isAddingMember = false);
         setDialogState(() {});
       }
@@ -261,12 +264,6 @@ class MembersTabState extends State<MembersTab> {
     return colors[index % colors.length];
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -299,15 +296,11 @@ class MembersTabState extends State<MembersTab> {
           final m = _members[i];
           final isManager = m['role'] == 'Manager';
           return ListTile(
-            leading: CircleAvatar(
+            leading: UserAvatar(
+              photoBase64: m['photoBase64'] as String?,
+              gender: m['gender'] as String?,
+              radius: 20,
               backgroundColor: _avatarColor(m['name'] as String, i),
-              child: Text(
-                _initials(m['name'] as String),
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white),
-              ),
             ),
             title: Text(m['name'] as String,
                 style: const TextStyle(fontWeight: FontWeight.w600)),

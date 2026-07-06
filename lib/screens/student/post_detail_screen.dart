@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/post.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/post_interaction_service.dart';
+import '../../services/saved_post_service.dart';
+import '../../widgets/base64_image.dart';
+import '../../widgets/identity_avatar.dart';
+import '../../widgets/media_gallery.dart';
+import '../../widgets/post_comment_sheet.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final PostModel post;
@@ -11,8 +19,99 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
+  bool _initialized = false;
   bool _liked = false;
-  bool _bookmarked = false;
+  bool _saved = false;
+  late int _likeCount;
+  late int _commentCount;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    _liked = userId != null && widget.post.likedUserIds.contains(userId);
+    _likeCount = widget.post.likeCount;
+    _commentCount = widget.post.commentCount;
+    _initialized = true;
+    if (userId != null) _loadSavedState(userId);
+  }
+
+  Future<void> _loadSavedState(String userId) async {
+    final ids = await SavedPostService().getSavedPostIds(userId);
+    if (!mounted) return;
+    setState(() => _saved = ids.contains(widget.post.id));
+  }
+
+  Future<void> _toggleLike() async {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId == null) return;
+
+    final wasLiked = _liked;
+    setState(() {
+      _liked = !wasLiked;
+      _likeCount += wasLiked ? -1 : 1;
+    });
+
+    try {
+      await PostInteractionService().toggleLike(
+        postId: widget.post.id,
+        userId: userId,
+        currentlyLiked: wasLiked,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _liked = wasLiked;
+        _likeCount += wasLiked ? 1 : -1;
+      });
+    }
+  }
+
+  Future<void> _showComments() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => PostCommentSheet(
+        post: widget.post.copyWith(commentCount: _commentCount),
+        user: user,
+        onCommentAdded: () {
+          if (mounted) setState(() => _commentCount += 1);
+        },
+      ),
+    );
+  }
+
+  Future<void> _toggleSaved() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    final wasSaved = _saved;
+    setState(() => _saved = !wasSaved);
+
+    try {
+      await SavedPostService().toggleSaved(
+        userId: user.id,
+        postId: widget.post.id,
+        currentlySaved: wasSaved,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saved = wasSaved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Save failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,19 +120,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final logoColor = widget.post.clubLogoColor != null
         ? Color(int.parse(widget.post.clubLogoColor!, radix: 16))
         : cs.primary;
-
-    final initials = widget.post.clubName.trim().split(' ').length >= 2
-        ? '${widget.post.clubName.trim().split(' ')[0][0]}${widget.post.clubName.trim().split(' ')[1][0]}'
-            .toUpperCase()
-        : widget.post.clubName.substring(0, 2).toUpperCase();
-
-    final sampleColors = [
-      const Color(0xFF6366F1),
-      const Color(0xFF14B8A6),
-      const Color(0xFFF97316),
-      const Color(0xFFA855F7),
-      const Color(0xFF10B981),
-    ];
 
     return Scaffold(
       body: CustomScrollView(
@@ -56,7 +142,34 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                 ),
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
+                    if (widget.post.coverImageBase64 != null) ...[
+                      Base64Image(data: widget.post.coverImageBase64!),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.black.withValues(alpha: 0.08),
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => showBase64ImagePreview(
+                              context,
+                              data: widget.post.coverImageBase64!,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     Positioned(
                       right: -20,
                       bottom: -20,
@@ -107,14 +220,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   // Club row
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: logoColor,
-                        child: Text(initials,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                      ClubAvatar(
+                        color: logoColor,
+                        logoBase64: widget.post.clubLogoImageBase64,
+                        showBackground: widget.post.clubShowLogoBackground,
+                        size: 40,
+                        borderRadius: 12,
                       ),
                       const SizedBox(width: 10),
                       Column(
@@ -157,60 +268,38 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: sampleColors.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (_, i) => Container(
-                        width: 100,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              sampleColors[i],
-                              Color.lerp(sampleColors[i], Colors.black, 0.25)!,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.image_rounded,
-                              color: Colors.white.withValues(alpha: 0.4),
-                              size: 30),
-                        ),
-                      ),
-                    ),
-                  ),
+                  MediaGallery(images: widget.post.photoBase64List),
                   const SizedBox(height: 28),
                   Divider(color: cs.onSurface.withValues(alpha: 0.1)),
                   const SizedBox(height: 12),
                   // Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  Wrap(
+                    alignment: WrapAlignment.spaceEvenly,
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
                       _ActionBtn(
                         icon: _liked
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
                         label: 'Like',
+                        count: _likeCount,
                         color: _liked ? Colors.red : null,
-                        onTap: () => setState(() => _liked = !_liked),
+                        onTap: _toggleLike,
                       ),
                       _ActionBtn(
-                        icon: Icons.share_rounded,
-                        label: 'Share',
-                        onTap: () {},
+                        icon: Icons.mode_comment_outlined,
+                        label: 'Comments',
+                        count: _commentCount,
+                        onTap: _showComments,
                       ),
                       _ActionBtn(
-                        icon: _bookmarked
+                        icon: _saved
                             ? Icons.bookmark_rounded
                             : Icons.bookmark_border_rounded,
                         label: 'Save',
-                        color: _bookmarked ? cs.primary : null,
-                        onTap: () => setState(() => _bookmarked = !_bookmarked),
+                        color: _saved ? cs.primary : null,
+                        onTap: _toggleSaved,
                       ),
                     ],
                   ),
@@ -228,11 +317,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
+  final int? count;
   final VoidCallback? onTap;
   final Color? color;
 
   const _ActionBtn(
-      {required this.icon, required this.label, this.onTap, this.color});
+      {required this.icon,
+      required this.label,
+      this.count,
+      this.onTap,
+      this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +341,7 @@ class _ActionBtn extends StatelessWidget {
           children: [
             Icon(icon, color: effectiveColor, size: 24),
             const SizedBox(height: 4),
-            Text(label,
+            Text(count == null ? label : '$count $label',
                 style: TextStyle(
                     fontSize: 12,
                     color: effectiveColor,

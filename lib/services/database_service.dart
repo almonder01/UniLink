@@ -30,6 +30,25 @@ class DatabaseService {
     return posts;
   }
 
+  Future<List<PostModel>> getPostsByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+
+    final posts = <PostModel>[];
+    const chunkSize = 10;
+    for (var i = 0; i < ids.length; i += chunkSize) {
+      final chunk = ids.sublist(i, (i + chunkSize).clamp(0, ids.length));
+      final snap = await _fs
+          .collection('posts')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      posts.addAll(
+        snap.docs.map((d) => PostModel.fromFirestoreMap(d.data())),
+      );
+    }
+    posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return posts;
+  }
+
   Future<void> updatePost(PostModel post) =>
       _fs.collection('posts').doc(post.id).update(post.toFirestoreMap());
 

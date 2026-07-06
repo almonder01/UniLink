@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/identity_avatar.dart';
 
 class ClubTile extends StatelessWidget {
   final Map<String, dynamic> club;
@@ -23,10 +24,6 @@ class ClubTile extends StatelessWidget {
       radix: 16,
     ));
     final name = club['name'] as String? ?? '?';
-    final words = name.trim().split(' ');
-    final initials = words.length >= 2
-        ? '${words[0][0]}${words[1][0]}'.toUpperCase()
-        : name.substring(0, name.length.clamp(0, 2)).toUpperCase();
     final managerName = club['manager_name'] as String?;
     final hasManager = managerName != null && managerName.isNotEmpty;
 
@@ -39,31 +36,13 @@ class ClubTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                // Logo avatar
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        logoColor,
-                        Color.lerp(logoColor, Colors.black, 0.2)!,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                ClubAvatar(
+                  color: logoColor,
+                  logoBase64: club['logo_image_base64'] as String?,
+                  showBackground:
+                      club['show_logo_background'] as bool? ?? true,
+                  size: 44,
+                  borderRadius: 12,
                 ),
                 const SizedBox(width: 12),
                 // Name + manager

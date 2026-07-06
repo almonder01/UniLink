@@ -33,13 +33,12 @@ class _ClubsScreenState extends State<ClubsScreen> {
     super.initState();
     _searchCtrl.addListener(() => setState(() {}));
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final userId = context.read<AuthProvider>().currentUser?.id ?? '';
-    if (userId.isNotEmpty) {
-      context.read<ClubFollowProvider>().loadFollowsIfNeeded(userId);
-    }
-  });
-  
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().currentUser?.id ?? '';
+      if (userId.isNotEmpty) {
+        context.read<ClubFollowProvider>().loadFollowsIfNeeded(userId);
+      }
+    });
   }
 
   @override
@@ -160,29 +159,44 @@ class _ClubsScreenState extends State<ClubsScreen> {
                           ],
                         ),
                       )
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.65,
-                        ),
-                        itemCount: filtered.length,
-                        itemBuilder: (_, i) {
-                          final club = filtered[i];
-                          return ClubCard(
-                            club: club,
-                            isFollowed:
-                                followProvider.isFollowing(userId, club.id),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ClubDetailScreen(club: club),
-                              ),
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          const spacing = 12.0;
+                          const horizontalPadding = 32.0;
+                          final contentWidth =
+                              constraints.maxWidth - horizontalPadding;
+                          final columns = contentWidth < 340 ? 1 : 2;
+                          final cardWidth =
+                              (contentWidth - spacing * (columns - 1)) /
+                                  columns;
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
+                            child: Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: filtered.map((club) {
+                                return SizedBox(
+                                  width: cardWidth,
+                                  child: ClubCard(
+                                    club: club,
+                                    isFollowed: followProvider.isFollowing(
+                                      userId,
+                                      club.id,
+                                    ),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ClubDetailScreen(club: club),
+                                      ),
+                                    ),
+                                    onFollowToggle: () =>
+                                        _toggleFollow(club, userId),
+                                  ),
+                                );
+                              }).toList(),
                             ),
-                            onFollowToggle: () => _toggleFollow(club, userId),
                           );
                         },
                       ),

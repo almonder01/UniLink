@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../widgets/identity_avatar.dart';
 import 'role_chip.dart';
 
 class UsersTab extends StatefulWidget {
@@ -114,18 +115,13 @@ class _UsersTabState extends State<UsersTab> {
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
-                                leading: CircleAvatar(
+                                leading: UserAvatar(
+                                  photoBase64:
+                                      u['photo_base64'] as String? ?? '',
+                                  gender: u['gender'] as String? ?? 'male',
+                                  radius: 20,
                                   backgroundColor:
                                       _roleColor(role).withValues(alpha: 0.15),
-                                  child: Text(
-                                    ((u['name'] as String?) ?? '?')
-                                        .substring(0, 1)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      color: _roleColor(role),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
                                 ),
                                 title: Text(
                                   (u['name'] as String?) ?? 'Unknown',
