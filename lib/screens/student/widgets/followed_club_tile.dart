@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/club.dart';
+import '../../../widgets/identity_avatar.dart';
 
 class FollowedClubTile extends StatelessWidget {
   final ClubModel club;
@@ -15,34 +16,15 @@ class FollowedClubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final logoColor = Color(int.parse(club.logoColor, radix: 16));
-    final parts = club.name.trim().split(' ');
-    final initials = parts.length >= 2
-        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : club.name.substring(0, 2).toUpperCase();
 
     return ListTile(
       onTap: onTap,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [logoColor, Color.lerp(logoColor, Colors.black, 0.25)!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            initials,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-        ),
+      leading: ClubAvatar(
+        color: logoColor,
+        logoBase64: club.logoImageBase64,
+        showBackground: club.showLogoBackground,
+        size: 40,
+        borderRadius: 12,
       ),
       title: Text(
         club.name,

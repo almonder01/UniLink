@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/club.dart';
-import 'post_card.dart' show clubInitials;
+import 'identity_avatar.dart';
 
 class ClubCard extends StatelessWidget {
   final ClubModel club;
@@ -32,18 +32,8 @@ class ClubCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Logo
-              Container(
-                width: 64,
-                height: 64,
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      logoColor,
-                      Color.lerp(logoColor, Colors.black, 0.25)!
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
@@ -53,15 +43,12 @@ class ClubCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Text(
-                    clubInitials(club.name),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
+                child: ClubAvatar(
+                  color: logoColor,
+                  logoBase64: club.logoImageBase64,
+                  showBackground: club.showLogoBackground,
+                  size: 64,
+                  borderRadius: 18,
                 ),
               ),
               const SizedBox(height: 10),
@@ -86,6 +73,8 @@ class ClubCard extends StatelessWidget {
                       fontSize: 10,
                       color: logoColor,
                       fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(height: 6),
@@ -95,11 +84,15 @@ class ClubCard extends StatelessWidget {
                   Icon(Icons.people_rounded,
                       size: 12, color: cs.onSurface.withValues(alpha: 0.45)),
                   const SizedBox(width: 3),
-                  Text(
-                    '${club.memberCount} members',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onSurface.withValues(alpha: 0.5)),
+                  Flexible(
+                    child: Text(
+                      '${club.memberCount} members',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: cs.onSurface.withValues(alpha: 0.5)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -115,13 +108,16 @@ class ClubCard extends StatelessWidget {
                           textStyle: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w600),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_rounded, size: 14),
-                            SizedBox(width: 4),
-                            Text('Following'),
-                          ],
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_rounded, size: 14),
+                              SizedBox(width: 4),
+                              Text('Following'),
+                            ],
+                          ),
                         ),
                       )
                     : FilledButton(
@@ -133,7 +129,10 @@ class ClubCard extends StatelessWidget {
                           textStyle: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w600),
                         ),
-                        child: const Text('Follow'),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Follow'),
+                        ),
                       ),
               ),
             ],

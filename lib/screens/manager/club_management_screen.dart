@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/club.dart';
+import '../../widgets/identity_avatar.dart';
+import 'club_profile_tab.dart';
+import 'event_dashboard_tab.dart';
 import 'events_tab.dart';
 import 'members_tab.dart';
 import 'posts_tab.dart';
@@ -15,6 +18,7 @@ class ClubManagementScreen extends StatefulWidget {
 class _ClubManagementScreenState extends State<ClubManagementScreen>
     with TickerProviderStateMixin {
   late TabController _tabCtrl;
+  late ClubModel _club;
 
   final _membersKey = GlobalKey<MembersTabState>();
   final _postsKey = GlobalKey<PostsTabState>();
@@ -27,7 +31,8 @@ class _ClubManagementScreenState extends State<ClubManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _club = widget.club;
+    _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() {
       if (mounted && !_tabCtrl.indexIsChanging) setState(() {});
     });
@@ -47,12 +52,25 @@ class _ClubManagementScreenState extends State<ClubManagementScreen>
       builder: (context, _) {
         switch (_tabCtrl.index) {
           case 0:
+            return const SizedBox.shrink();
+
+          case 1:
+            return FloatingActionButton.extended(
+              onPressed: () => _eventsKey.currentState?.createNewEvent(),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'New Event',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            );
+
+          case 2:
             return FloatingActionButton(
               onPressed: () => _membersKey.currentState?.showAddMemberDialog(),
               child: const Icon(Icons.person_add_rounded),
             );
 
-          case 1:
+          case 3:
             return FloatingActionButton.extended(
               onPressed: () => _postsKey.currentState?.createNewPost(),
               icon: const Icon(Icons.add_rounded),
@@ -81,48 +99,28 @@ class _ClubManagementScreenState extends State<ClubManagementScreen>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final colorHex = widget.club.logoColor.length == 8
-        ? widget.club.logoColor
-        : 'FF${widget.club.logoColor}';
+    final colorHex =
+        _club.logoColor.length == 8 ? _club.logoColor : 'FF${_club.logoColor}';
     final logoColor = Color(int.parse(colorHex, radix: 16));
-    final initials = widget.club.name.trim().split(' ').length >= 2
-        ? '${widget.club.name.trim().split(' ')[0][0]}${widget.club.name.trim().split(' ')[1][0]}'
-            .toUpperCase()
-        : widget.club.name.substring(0, 2).toUpperCase();
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    logoColor,
-                    Color.lerp(logoColor, Colors.black, 0.2)!,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(initials,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white)),
-              ),
+            ClubAvatar(
+              color: logoColor,
+              logoBase64: _club.logoImageBase64,
+              showBackground: _club.showLogoBackground,
+              size: 36,
+              borderRadius: 10,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.club.name,
+                  Text(_club.name,
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w800),
                       overflow: TextOverflow.ellipsis),
@@ -138,7 +136,24 @@ class _ClubManagementScreenState extends State<ClubManagementScreen>
         ),
         bottom: TabBar(
           controller: _tabCtrl,
+          isScrollable: true,
           tabs: [
+            const Tab(
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.tune_rounded, size: 14),
+                SizedBox(width: 4),
+                Text('Profile'),
+              ]),
+            ),
+            const Tab(
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.insights_rounded, size: 14),
+                SizedBox(width: 4),
+                Text('Dashboard'),
+              ]),
+            ),
             Tab(
               child:
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -174,23 +189,28 @@ class _ClubManagementScreenState extends State<ClubManagementScreen>
       body: TabBarView(
         controller: _tabCtrl,
         children: [
+          ClubProfileTab(
+            club: _club,
+            onChanged: (club) => setState(() => _club = club),
+          ),
+          EventDashboardTab(club: _club),
           MembersTab(
             key: _membersKey,
-            club: widget.club,
+            club: _club,
             onCountChanged: (count) {
               if (mounted) setState(() => _memberCount = count);
             },
           ),
           PostsTab(
             key: _postsKey,
-            club: widget.club,
+            club: _club,
             onCountChanged: (count) {
               if (mounted) setState(() => _postCount = count);
             },
           ),
           EventsTab(
             key: _eventsKey,
-            club: widget.club,
+            club: _club,
             onCountChanged: (count) {
               if (mounted) setState(() => _eventCount = count);
             },

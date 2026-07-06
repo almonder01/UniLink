@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 class EventDateTimeCard extends StatelessWidget {
   final TextEditingController locationCtrl;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
+  final LatLng? selectedMapLocation;
   final VoidCallback onPickDate;
   final VoidCallback onPickTime;
+  final VoidCallback onPickMap;
 
   const EventDateTimeCard({
     super.key,
     required this.locationCtrl,
     required this.selectedDate,
     required this.selectedTime,
+    required this.selectedMapLocation,
     required this.onPickDate,
     required this.onPickTime,
+    required this.onPickMap,
   });
 
   @override
@@ -36,6 +41,50 @@ class EventDateTimeCard extends StatelessWidget {
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Please enter a location'
                   : null,
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: onPickMap,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.map_rounded,
+                      size: 20,
+                      color: selectedMapLocation != null
+                          ? cs.primary
+                          : cs.onSurface.withValues(alpha: 0.45),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        selectedMapLocation != null
+                            ? '${selectedMapLocation!.latitude.toStringAsFixed(5)}, '
+                                '${selectedMapLocation!.longitude.toStringAsFixed(5)}'
+                            : 'Pick location on map',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: selectedMapLocation != null
+                              ? cs.onSurface
+                              : cs.onSurface.withValues(alpha: 0.45),
+                          fontWeight: selectedMapLocation != null
+                              ? FontWeight.w500
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: cs.onSurface.withValues(alpha: 0.3)),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             // Date picker

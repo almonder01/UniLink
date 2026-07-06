@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,12 +8,17 @@ import '../../providers/club_follow_provider.dart';
 import '../../providers/club_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../services/database_service.dart';
+import '../../services/event_service.dart';
+import '../../services/post_interaction_service.dart';
+import '../../services/saved_post_service.dart';
 import '../../widgets/event_card.dart';
+import '../../widgets/post_comment_sheet.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/unilink_logo.dart';
 import 'notifications_screen.dart';
 import 'post_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'widgets/event_registration_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,7 +30,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<PostModel> _dbPosts = [];
   List<EventModel> _dbEvents = [];
-  bool _refreshing = false;
+  Set<String> _savedPostIds = {};
 
   @override
   void initState() {
@@ -35,23 +39,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadFeed() async {
+    final userId = context.read<AuthProvider>().currentUser?.id;
     final posts = await DatabaseService().getAllPosts();
-    final snap = await FirebaseFirestore.instance.collection('events').get();
-    final events = snap.docs.map((d) => EventModel.fromMap(d.data())).toList();
-    events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final events = await EventService().getAllEvents(userId: userId);
+    final savedIds = userId == null
+        ? <String>{}
+        : await SavedPostService().getSavedPostIds(userId);
     if (mounted) {
       setState(() {
         _dbPosts = posts;
         _dbEvents = events;
+        _savedPostIds = savedIds;
       });
     }
   }
 
   Future<void> _onRefresh() async {
-    setState(() => _refreshing = true);
     await Future.delayed(const Duration(milliseconds: 800));
     await _loadFeed();
-    if (mounted) setState(() => _refreshing = false);
   }
 
   String _greeting() {
@@ -59,6 +64,157 @@ class _HomeScreenState extends State<HomeScreen> {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  Future<void> _registerForEvent(EventModel event) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null || event.isRegistered) return;
+
+    final confirmed = await showEventRegistrationDialog(
+      context,
+      event: event,
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      await EventService().registerForEvent(event: event, user: user);
+      if (!mounted) return;
+      setState(() => event.isRegistered = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You're registered!"),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _replacePost(PostModel updatedPost) {
+    setState(() {
+      final index = _dbPosts.indexWhere((post) => post.id == updatedPost.id);
+      if (index != -1) _dbPosts[index] = updatedPost;
+    });
+  }
+
+  void _incrementCommentCount(String postId) {
+    setState(() {
+      final index = _dbPosts.indexWhere((post) => post.id == postId);
+      if (index == -1) return;
+      final current = _dbPosts[index];
+      _dbPosts[index] =
+          current.copyWith(commentCount: current.commentCount + 1);
+    });
+  }
+
+  Future<void> _toggleLike(PostModel post) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    final wasLiked = post.likedUserIds.contains(user.id);
+    final updatedLikedIds = [...post.likedUserIds];
+    if (wasLiked) {
+      updatedLikedIds.remove(user.id);
+    } else {
+      updatedLikedIds.add(user.id);
+    }
+
+    final nextLikeCount = post.likeCount + (wasLiked ? -1 : 1);
+    final updatedPost = post.copyWith(
+      likedUserIds: updatedLikedIds,
+      likeCount: nextLikeCount < 0 ? 0 : nextLikeCount,
+    );
+    _replacePost(updatedPost);
+
+    try {
+      await PostInteractionService().toggleLike(
+        postId: post.id,
+        userId: user.id,
+        currentlyLiked: wasLiked,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _replacePost(post);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Like failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showComments(PostModel post) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => PostCommentSheet(
+        post: post,
+        user: user,
+        onCommentAdded: () => _incrementCommentCount(post.id),
+      ),
+    );
+    await _loadFeed();
+  }
+
+  Future<void> _toggleSaved(PostModel post) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    final wasSaved = _savedPostIds.contains(post.id);
+    setState(() {
+      if (wasSaved) {
+        _savedPostIds.remove(post.id);
+      } else {
+        _savedPostIds.add(post.id);
+      }
+    });
+
+    try {
+      await SavedPostService().toggleSaved(
+        userId: user.id,
+        postId: post.id,
+        currentlySaved: wasSaved,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasSaved) {
+          _savedPostIds.add(post.id);
+        } else {
+          _savedPostIds.remove(post.id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Save failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openPostDetail(PostModel post) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PostDetailScreen(post: post),
+      ),
+    );
+    if (mounted) await _loadFeed();
   }
 
   @override
@@ -74,6 +230,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _dbPosts.where((p) => followedIds.contains(p.clubId)).toList();
     final events =
         _dbEvents.where((e) => followedIds.contains(e.clubId)).toList();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final eventCardWidth = screenWidth < 360 ? screenWidth - 48 : 320.0;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final eventCarouselHeight = textScale > 1.1 ? 360.0 : 330.0;
 
     // // Interleave filtered posts + events from followed clubs into one feed
     // final List<dynamic> feed = [];
@@ -138,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               SizedBox(
-                height: 280,
+                height: eventCarouselHeight,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: events.length,
@@ -147,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final event = events[index];
 
                     return SizedBox(
-                      width: 320,
+                      width: eventCardWidth,
                       child: EventCard(
                         event: event,
                         onTap: () => Navigator.push(
@@ -156,11 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             builder: (_) => EventDetailScreen(event: event),
                           ),
                         ),
-                        onRegister: () {
-                          setState(
-                            () => event.isRegistered = !event.isRegistered,
-                          );
-                        },
+                        onRegister: () => _registerForEvent(event),
                       ),
                     );
                   },
@@ -188,12 +344,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: PostCard(
                     post: post,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PostDetailScreen(post: post),
-                      ),
-                    ),
+                    isLiked: post.likedUserIds.contains(userId),
+                    isSaved: _savedPostIds.contains(post.id),
+                    onLike: () => _toggleLike(post),
+                    onComment: () => _showComments(post),
+                    onSave: () => _toggleSaved(post),
+                    onTap: () => _openPostDetail(post),
                   ),
                 ),
               ),

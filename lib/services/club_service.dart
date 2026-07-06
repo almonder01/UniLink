@@ -19,6 +19,54 @@ class ClubService {
     return doc.exists ? ClubModel.fromFirestore(doc) : null;
   }
 
+  Future<void> updateClub(ClubModel club) async {
+    await _col.doc(club.id).update(club.toFirestore());
+    await _syncClubIdentity(club);
+  }
+
+  Future<void> _syncClubIdentity(ClubModel club) async {
+    final data = {
+      'clubName': club.name,
+      'clubLogoColor': club.logoColor,
+      'clubLogoImageBase64': club.logoImageBase64 ?? '',
+      'clubShowLogoBackground': club.showLogoBackground,
+    };
+
+    await _syncCollectionClubIdentity(
+      collection: 'posts',
+      clubId: club.id,
+      data: data,
+    );
+    await _syncCollectionClubIdentity(
+      collection: 'events',
+      clubId: club.id,
+      data: data,
+    );
+  }
+
+  Future<void> _syncCollectionClubIdentity({
+    required String collection,
+    required String clubId,
+    required Map<String, dynamic> data,
+  }) async {
+    final snap =
+        await _db.collection(collection).where('clubId', isEqualTo: clubId).get();
+    if (snap.docs.isEmpty) return;
+
+    WriteBatch batch = _db.batch();
+    var pending = 0;
+    for (final doc in snap.docs) {
+      batch.update(doc.reference, data);
+      pending++;
+      if (pending == 450) {
+        await batch.commit();
+        batch = _db.batch();
+        pending = 0;
+      }
+    }
+    if (pending > 0) await batch.commit();
+  }
+
   /// Seeds the 8 default clubs into Firestore if the collection is empty.
   /// Must be called while a user is authenticated.
   Future<void> seedIfEmpty() async {

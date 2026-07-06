@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/club.dart';
 import '../../models/event.dart';
+import '../../services/event_service.dart';
 import '../../widgets/event_card.dart';
 import '../student/event_detail_screen.dart';
 import 'create_event_screen.dart';
@@ -19,7 +19,6 @@ class EventsTab extends StatefulWidget {
 }
 
 class EventsTabState extends State<EventsTab> {
-  final _db = FirebaseFirestore.instance;
   List<EventModel> _events = [];
 
   @override
@@ -33,12 +32,7 @@ class EventsTabState extends State<EventsTab> {
   }
 
   Future<void> _loadEvents() async {
-    final snap = await _db
-        .collection('events')
-        .where('clubId', isEqualTo: widget.club.id)
-        .get();
-    final events = snap.docs.map((d) => EventModel.fromMap(d.data())).toList();
-    events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final events = await EventService().getEventsByClub(widget.club.id);
     if (mounted) setState(() => _events = events);
     _reportCount();
   }
@@ -65,7 +59,7 @@ class EventsTabState extends State<EventsTab> {
     if (confirm != true) return;
 
     try {
-      await _db.collection('events').doc(event.id).delete();
+      await EventService().deleteEvent(event.id);
       if (!mounted) return;
       setState(() => _events.remove(event));
       _reportCount();
@@ -105,15 +99,29 @@ class EventsTabState extends State<EventsTab> {
     _loadEvents();
   }
 
-  RelativeRect _menuPosition(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return RelativeRect.fromLTRB(size.width - 160, 100, 16, 0);
+  RelativeRect _menuPosition(BuildContext anchorContext) {
+    final buttonBox = anchorContext.findRenderObject() as RenderBox;
+    final overlayBox = Navigator.of(anchorContext)
+        .overlay!
+        .context
+        .findRenderObject() as RenderBox;
+    final topLeft =
+        buttonBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    return RelativeRect.fromRect(
+      Rect.fromLTWH(
+        topLeft.dx,
+        topLeft.dy,
+        buttonBox.size.width,
+        buttonBox.size.height,
+      ),
+      Offset.zero & overlayBox.size,
+    );
   }
 
-  void _showEventMenu(BuildContext context, EventModel event) {
+  void _showEventMenu(BuildContext anchorContext, EventModel event) {
     showMenu<String>(
-      context: context,
-      position: _menuPosition(context),
+      context: anchorContext,
+      position: _menuPosition(anchorContext),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       items: const [
         PopupMenuItem(
@@ -168,7 +176,8 @@ class EventsTabState extends State<EventsTab> {
               top: 4,
               right: 4,
               child: ThreeDotButton(
-                onTap: () => _showEventMenu(ctx, event),
+                onTap: (buttonContext) =>
+                    _showEventMenu(buttonContext, event),
               ),
             ),
           ],
