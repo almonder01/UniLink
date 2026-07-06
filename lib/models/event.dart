@@ -14,9 +14,17 @@ class EventModel {
   final String? coverImageBase64;
   final List<String> photoBase64List;
   final DateTime eventDate;
+  final double? feeAmount;
+  final String feeCurrency;
+  final int? maxParticipants;
+  final String? externalFormUrl;
+  final String? registrationRequirementPrompt;
+  final bool requiresRegistrationText;
+  final bool requiresRegistrationFile;
   final int registeredCount;
   final int attendedCount;
   bool isRegistered;
+  final String? registrationStatus;
 
   EventModel({
     required this.id,
@@ -34,10 +42,39 @@ class EventModel {
     this.coverImageBase64,
     this.photoBase64List = const [],
     required this.eventDate,
+    this.feeAmount,
+    this.feeCurrency = 'RM',
+    this.maxParticipants,
+    this.externalFormUrl,
+    this.registrationRequirementPrompt,
+    this.requiresRegistrationText = false,
+    this.requiresRegistrationFile = false,
     this.registeredCount = 0,
     this.attendedCount = 0,
     this.isRegistered = false,
+    this.registrationStatus,
   });
+
+  bool get requiresPayment => feeAmount != null && feeAmount! > 0;
+  bool get isPendingApproval => registrationStatus == 'pending';
+  bool get isRegistrationApproved => registrationStatus == 'approved';
+  bool get hasCapacityLimit => maxParticipants != null && maxParticipants! > 0;
+  bool get isFull => hasCapacityLimit && registeredCount >= maxParticipants!;
+  bool get hasExternalForm => (externalFormUrl ?? '').trim().isNotEmpty;
+  bool get hasRegistrationRequirement =>
+      requiresRegistrationText || requiresRegistrationFile;
+  int? get remainingSlots {
+    if (!hasCapacityLimit) return null;
+    final remaining = maxParticipants! - registeredCount;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  String get feeLabel {
+    if (!requiresPayment) return 'Free';
+    return feeCurrency == 'USD'
+        ? '\$${feeAmount!.toStringAsFixed(2)}'
+        : 'RM ${feeAmount!.toStringAsFixed(2)}';
+  }
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -56,6 +93,14 @@ class EventModel {
         if (coverImageBase64 != null) 'coverImageBase64': coverImageBase64,
         'photoBase64List': photoBase64List,
         'eventDate': eventDate.toIso8601String(),
+        'feeAmount': feeAmount,
+        'feeCurrency': feeCurrency,
+        'maxParticipants': maxParticipants,
+        if (externalFormUrl != null) 'externalFormUrl': externalFormUrl,
+        if (registrationRequirementPrompt != null)
+          'registrationRequirementPrompt': registrationRequirementPrompt,
+        'requiresRegistrationText': requiresRegistrationText,
+        'requiresRegistrationFile': requiresRegistrationFile,
         'registeredCount': registeredCount,
         'attendedCount': attendedCount,
       };
@@ -76,6 +121,16 @@ class EventModel {
         coverImageBase64: map['coverImageBase64'] as String?,
         photoBase64List: List<String>.from(map['photoBase64List'] ?? const []),
         eventDate: DateTime.parse(map['eventDate'] as String),
+        feeAmount: (map['feeAmount'] as num?)?.toDouble(),
+        feeCurrency: map['feeCurrency'] as String? ?? 'RM',
+        maxParticipants: (map['maxParticipants'] as num?)?.toInt(),
+        externalFormUrl: map['externalFormUrl'] as String?,
+        registrationRequirementPrompt:
+            map['registrationRequirementPrompt'] as String?,
+        requiresRegistrationText:
+            map['requiresRegistrationText'] as bool? ?? false,
+        requiresRegistrationFile:
+            map['requiresRegistrationFile'] as bool? ?? false,
         registeredCount: (map['registeredCount'] as num?)?.toInt() ?? 0,
         attendedCount: (map['attendedCount'] as num?)?.toInt() ?? 0,
       );
@@ -90,9 +145,17 @@ class EventModel {
     String? coverImageBase64,
     List<String>? photoBase64List,
     DateTime? eventDate,
+    double? feeAmount,
+    String? feeCurrency,
+    int? maxParticipants,
+    String? externalFormUrl,
+    String? registrationRequirementPrompt,
+    bool? requiresRegistrationText,
+    bool? requiresRegistrationFile,
     int? registeredCount,
     int? attendedCount,
     bool? isRegistered,
+    String? registrationStatus,
   }) =>
       EventModel(
         id: id,
@@ -110,8 +173,19 @@ class EventModel {
         coverImageBase64: coverImageBase64 ?? this.coverImageBase64,
         photoBase64List: photoBase64List ?? this.photoBase64List,
         eventDate: eventDate ?? this.eventDate,
+        feeAmount: feeAmount ?? this.feeAmount,
+        feeCurrency: feeCurrency ?? this.feeCurrency,
+        maxParticipants: maxParticipants ?? this.maxParticipants,
+        externalFormUrl: externalFormUrl ?? this.externalFormUrl,
+        registrationRequirementPrompt:
+            registrationRequirementPrompt ?? this.registrationRequirementPrompt,
+        requiresRegistrationText:
+            requiresRegistrationText ?? this.requiresRegistrationText,
+        requiresRegistrationFile:
+            requiresRegistrationFile ?? this.requiresRegistrationFile,
         registeredCount: registeredCount ?? this.registeredCount,
         attendedCount: attendedCount ?? this.attendedCount,
         isRegistered: isRegistered ?? this.isRegistered,
+        registrationStatus: registrationStatus ?? this.registrationStatus,
       );
 }

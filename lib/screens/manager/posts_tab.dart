@@ -153,25 +153,29 @@ class PostsTabState extends State<PostsTab> {
       itemCount: _posts.length,
       itemBuilder: (ctx, i) {
         final post = _posts[i];
-        return Stack(
-          children: [
-            PostCard(
-              post: post,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PostDetailScreen(post: post),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Stack(
+            children: [
+              PostCard(
+                post: post,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PostDetailScreen(post: post),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: ThreeDotButton(
-                onTap: (buttonContext) => _showPostMenu(buttonContext, post),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: ThreeDotButton(
+                  onTap: (buttonContext) =>
+                      _showPostMenu(buttonContext, post),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

@@ -7,6 +7,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/club_follow_provider.dart';
 import '../../providers/club_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../services/club_membership_service.dart';
 import '../../services/database_service.dart';
 import '../../services/event_service.dart';
 import '../../services/post_interaction_service.dart';
@@ -18,6 +20,8 @@ import '../../widgets/unilink_logo.dart';
 import 'notifications_screen.dart';
 import 'post_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'club_detail_screen.dart';
+import '../chat/share_to_chat_sheet.dart';
 import 'widgets/event_registration_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,6 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<PostModel> _dbPosts = [];
   List<EventModel> _dbEvents = [];
   Set<String> _savedPostIds = {};
+  Set<String> _memberClubIds = {};
+  int _visiblePostCount = 10;
+  int _visibleEventCount = 10;
 
   @override
   void initState() {
@@ -40,8 +47,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadFeed() async {
     final userId = context.read<AuthProvider>().currentUser?.id;
-    final posts = await DatabaseService().getAllPosts();
-    final events = await EventService().getAllEvents(userId: userId);
+    final posts = await DatabaseService().getRecentPosts(limit: 60);
+    final events = await EventService().getUpcomingEvents(
+      userId: userId,
+      limit: 60,
+    );
+    final memberClubIds = userId == null
+        ? <String>{}
+        : (await ClubMembershipService().memberClubIdsForUser(userId)).toSet();
     final savedIds = userId == null
         ? <String>{}
         : await SavedPostService().getSavedPostIds(userId);
@@ -49,7 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _dbPosts = posts;
         _dbEvents = events;
+        _memberClubIds = memberClubIds;
         _savedPostIds = savedIds;
+        _visiblePostCount = 10;
+        _visibleEventCount = 10;
       });
     }
   }
@@ -69,20 +85,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _registerForEvent(EventModel event) async {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null || event.isRegistered) return;
+    if (event.isFull) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This event is full.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-    final confirmed = await showEventRegistrationDialog(
+    final submission = await showEventRegistrationDialog(
       context,
       event: event,
     );
-    if (!confirmed || !mounted) return;
+    if (submission == null || !mounted) return;
 
     try {
-      await EventService().registerForEvent(event: event, user: user);
+      await EventService().registerForEvent(
+        event: event,
+        user: user,
+        paymentReceiptBase64: submission.paymentReceiptBase64,
+        requirementTextResponse: submission.requirementTextResponse,
+        requirementFileBase64: submission.requirementFileBase64,
+      );
       if (!mounted) return;
-      setState(() => event.isRegistered = true);
+      final status =
+          event.requiresPayment || event.hasRegistrationRequirement
+              ? 'pending'
+              : 'approved';
+      setState(() {
+        final index = _dbEvents.indexWhere((item) => item.id == event.id);
+        if (index != -1) {
+          _dbEvents[index] = event.copyWith(
+            isRegistered: true,
+            registrationStatus: status,
+          );
+        } else {
+          event.isRegistered = true;
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You're registered!"),
+        SnackBar(
+          content: Text(
+            event.requiresPayment
+                    || event.hasRegistrationRequirement
+                ? 'Registration submitted for approval.'
+                : "You're registered!",
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -217,19 +267,96 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) await _loadFeed();
   }
 
+  Future<void> _sharePost(PostModel post) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showPost(context, post: post, user: user);
+  }
+
+  Future<void> _shareEvent(EventModel event) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showEvent(context, event: event, user: user);
+  }
+
+  void _openClub(String clubId) {
+    final club = context.read<ClubProvider>().getById(clubId);
+    if (club == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ClubDetailScreen(club: club)),
+    );
+  }
+
+  int _priorityForClub(
+    String clubId,
+    Set<String> followedIds,
+    String mode,
+  ) {
+    final isMember = _memberClubIds.contains(clubId);
+    final isFollowed = followedIds.contains(clubId);
+    if (mode == 'recent') return 0;
+    if (mode == 'followed_first') {
+      if (isFollowed) return 0;
+      if (isMember) return 1;
+      return 2;
+    }
+    if (isMember) return 0;
+    if (isFollowed) return 1;
+    return 2;
+  }
+
+  List<PostModel> _prioritizedPosts(
+    Set<String> followedIds,
+    String mode,
+  ) {
+    final visibleClubIds = {...followedIds, ..._memberClubIds};
+    final posts =
+        _dbPosts.where((post) => visibleClubIds.contains(post.clubId)).toList();
+    posts.sort((a, b) {
+      final priority = _priorityForClub(a.clubId, followedIds, mode)
+          .compareTo(_priorityForClub(b.clubId, followedIds, mode));
+      if (priority != 0) return priority;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return posts;
+  }
+
+  List<EventModel> _prioritizedEvents(
+    Set<String> followedIds,
+    String mode,
+  ) {
+    final visibleClubIds = {...followedIds, ..._memberClubIds};
+    final events = _dbEvents
+        .where((event) => visibleClubIds.contains(event.clubId))
+        .toList();
+    events.sort((a, b) {
+      final priority = _priorityForClub(a.clubId, followedIds, mode)
+          .compareTo(_priorityForClub(b.clubId, followedIds, mode));
+      if (priority != 0) return priority;
+      return a.eventDate.compareTo(b.eventDate);
+    });
+    return events;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final user = context.watch<AuthProvider>().currentUser;
     final followProvider = context.watch<ClubFollowProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     context.watch<ClubProvider>(); // rebuild when clubs load
     final hasUnread = context.watch<NotificationProvider>().unreadCount > 0;
     final userId = user?.id ?? '';
     final followedIds = followProvider.getFollowedIds(userId);
     final filteredPosts =
-        _dbPosts.where((p) => followedIds.contains(p.clubId)).toList();
+        _prioritizedPosts(followedIds, themeProvider.postFeedPriority);
     final events =
-        _dbEvents.where((e) => followedIds.contains(e.clubId)).toList();
+        _prioritizedEvents(followedIds, themeProvider.eventFeedPriority);
+    final shownPosts = filteredPosts.take(_visiblePostCount).toList();
+    final shownEvents = events.take(_visibleEventCount).toList();
+    final hasMorePosts = filteredPosts.length > shownPosts.length;
+    final hasMoreEvents = events.length > shownEvents.length;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final eventCardWidth = screenWidth < 360 ? screenWidth - 48 : 320.0;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -287,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // Events Section
-            if (events.isNotEmpty) ...[
+            if (shownEvents.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(
                 'Upcoming Events',
@@ -301,10 +428,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: eventCarouselHeight,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: events.length,
+                  itemCount: shownEvents.length + (hasMoreEvents ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final event = events[index];
+                    if (index == shownEvents.length) {
+                      return _LoadMoreEventCard(
+                        width: eventCardWidth,
+                        onTap: () => setState(() {
+                          _visibleEventCount += 10;
+                        }),
+                      );
+                    }
+                    final event = shownEvents[index];
 
                     return SizedBox(
                       width: eventCardWidth,
@@ -317,6 +452,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         onRegister: () => _registerForEvent(event),
+                        onShare: () => _shareEvent(event),
+                        onClubTap: () => _openClub(event.clubId),
                       ),
                     );
                   },
@@ -327,7 +464,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
 
             Text(
-              followedIds.isEmpty ? 'Discover clubs' : 'From your clubs',
+              followedIds.isEmpty && _memberClubIds.isEmpty
+                  ? 'Discover clubs'
+                  : 'From your clubs',
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -336,24 +475,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            if (filteredPosts.isEmpty)
+            if (shownPosts.isEmpty)
               _EmptyFeed()
             else
-              ...filteredPosts.map(
-                (post) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: PostCard(
-                    post: post,
-                    isLiked: post.likedUserIds.contains(userId),
-                    isSaved: _savedPostIds.contains(post.id),
-                    onLike: () => _toggleLike(post),
-                    onComment: () => _showComments(post),
-                    onSave: () => _toggleSaved(post),
-                    onTap: () => _openPostDetail(post),
+              ...[
+                ...shownPosts.map(
+                  (post) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: PostCard(
+                      post: post,
+                      isLiked: post.likedUserIds.contains(userId),
+                      isSaved: _savedPostIds.contains(post.id),
+                      onLike: () => _toggleLike(post),
+                      onComment: () => _showComments(post),
+                      onSave: () => _toggleSaved(post),
+                      onShare: () => _sharePost(post),
+                      onClubTap: () => _openClub(post.clubId),
+                      onTap: () => _openPostDetail(post),
+                    ),
                   ),
                 ),
-              ),
+                if (hasMorePosts)
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() {
+                        _visiblePostCount += 10;
+                      }),
+                      icon: const Icon(Icons.expand_more_rounded),
+                      label: const Text('Load more posts'),
+                    ),
+                  ),
+              ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadMoreEventCard extends StatelessWidget {
+  final double width;
+  final VoidCallback onTap;
+
+  const _LoadMoreEventCard({required this.width, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: width,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.expand_more_rounded, color: cs.primary, size: 30),
+                const SizedBox(height: 8),
+                Text(
+                  'Load more events',
+                  style: TextStyle(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

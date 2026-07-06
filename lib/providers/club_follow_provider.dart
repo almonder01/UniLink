@@ -18,9 +18,6 @@ class ClubFollowProvider extends ChangeNotifier {
     _db.collection('user_follows').doc(userId).set({
       'club_ids': FieldValue.arrayUnion([clubId]),
     }, SetOptions(merge: true)).catchError((_) {});
-    _db.collection('clubs').doc(clubId).update({
-      'member_count': FieldValue.increment(1),
-    }).catchError((_) {});
   }
 
   void unfollow(String userId, String clubId) {
@@ -28,9 +25,6 @@ class ClubFollowProvider extends ChangeNotifier {
     notifyListeners();
     _db.collection('user_follows').doc(userId).update({
       'club_ids': FieldValue.arrayRemove([clubId]),
-    }).catchError((_) {});
-    _db.collection('clubs').doc(clubId).update({
-      'member_count': FieldValue.increment(-1),
     }).catchError((_) {});
   }
 

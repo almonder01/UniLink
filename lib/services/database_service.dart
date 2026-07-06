@@ -19,6 +19,24 @@ class DatabaseService {
     return posts;
   }
 
+  Future<List<PostModel>> getRecentPosts({int limit = 60}) async {
+    final snap = await _fs
+        .collection('posts')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .get();
+    final posts =
+        snap.docs.map((d) => PostModel.fromFirestoreMap(d.data())).toList();
+    posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return posts;
+  }
+
+  Future<PostModel?> getPostById(String id) async {
+    final doc = await _fs.collection('posts').doc(id).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return PostModel.fromFirestoreMap(doc.data()!);
+  }
+
   Future<List<PostModel>> getPostsByClub(String clubId) async {
     final snap = await _fs
         .collection('posts')

@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/club_provider.dart';
 import '../../services/saved_post_service.dart';
 import '../../widgets/post_card.dart';
+import 'club_detail_screen.dart';
 import 'post_detail_screen.dart';
 
 class SavedPostsScreen extends StatefulWidget {
@@ -101,6 +103,15 @@ class _SavedPostsScreenState extends State<SavedPostsScreen> {
     if (mounted) await _loadSavedPosts();
   }
 
+  void _openClub(String clubId) {
+    final club = context.read<ClubProvider>().getById(clubId);
+    if (club == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ClubDetailScreen(club: club)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -193,6 +204,7 @@ class _SavedPostsScreenState extends State<SavedPostsScreen> {
                     post: post,
                     isSaved: true,
                     onSave: () => _unsave(post),
+                    onClubTap: () => _openClub(post.clubId),
                     onTap: () => _openPost(post),
                   ),
                 ),

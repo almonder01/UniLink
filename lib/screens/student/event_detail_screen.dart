@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/event.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/club_provider.dart';
 import '../../services/event_service.dart';
 import '../../widgets/base64_image.dart';
 import '../../widgets/event_map_preview.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_gallery.dart';
+import '../chat/share_to_chat_sheet.dart';
+import 'club_detail_screen.dart';
 import 'widgets/info_chip.dart';
 import 'widgets/event_registration_dialog.dart';
 
@@ -21,23 +25,40 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   late bool _isRegistered;
+  String? _registrationStatus;
 
   @override
   void initState() {
     super.initState();
     _isRegistered = widget.event.isRegistered;
+    _registrationStatus = widget.event.registrationStatus;
   }
 
   Future<void> _confirmRegistration() async {
-    final confirmed = await showEventRegistrationDialog(
+    if (widget.event.isFull && !_isRegistered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This event is full.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final submission = await showEventRegistrationDialog(
       context,
       event: widget.event,
     );
-    if (confirmed && mounted) {
+    if (submission != null && mounted) {
       final user = context.read<AuthProvider>().currentUser;
       if (user == null) return;
       try {
-        await EventService().registerForEvent(event: widget.event, user: user);
+        await EventService().registerForEvent(
+          event: widget.event,
+          user: user,
+          paymentReceiptBase64: submission.paymentReceiptBase64,
+          requirementTextResponse: submission.requirementTextResponse,
+          requirementFileBase64: submission.requirementFileBase64,
+        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -51,15 +72,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (!mounted) return;
       setState(() {
         _isRegistered = true;
-        widget.event.isRegistered = true;
+        _registrationStatus =
+            widget.event.requiresPayment || widget.event.hasRegistrationRequirement
+                ? 'pending'
+                : 'approved';
       });
+      widget.event.isRegistered = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text("You're registered! See you there."),
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Text(
+                widget.event.requiresPayment
+                        || widget.event.hasRegistrationRequirement
+                    ? 'Registration submitted for approval.'
+                    : "You're registered! See you there.",
+              ),
             ],
           ),
           backgroundColor: const Color(0xFF22C55E),
@@ -71,6 +101,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  Future<void> _shareEvent() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showEvent(context, event: widget.event, user: user);
+  }
+
+  Future<void> _copyExternalForm() async {
+    final link = widget.event.externalFormUrl?.trim();
+    if (link == null || link.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Form link copied.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _openClub() {
+    final club = context.read<ClubProvider>().getById(widget.event.clubId);
+    if (club == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ClubDetailScreen(club: club)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -78,6 +136,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final logoColor = widget.event.clubLogoColor != null
         ? Color(int.parse(widget.event.clubLogoColor!, radix: 16))
         : cs.primary;
+    final isPending = _registrationStatus == 'pending';
+    final statusColor =
+        isPending ? const Color(0xFFF59E0B) : const Color(0xFF22C55E);
 
     return Scaffold(
       body: CustomScrollView(
@@ -216,29 +277,33 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Club row
-                  Row(
-                    children: [
-                      ClubAvatar(
-                        color: logoColor,
-                        logoBase64: widget.event.clubLogoImageBase64,
-                        showBackground: widget.event.clubShowLogoBackground,
-                        size: 40,
-                        borderRadius: 12,
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.event.clubName,
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w700)),
-                          Text('Organized by ${widget.event.clubName}',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: cs.onSurface.withValues(alpha: 0.5))),
-                        ],
-                      ),
-                    ],
+                  InkWell(
+                    onTap: _openClub,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Row(
+                      children: [
+                        ClubAvatar(
+                          color: logoColor,
+                          logoBase64: widget.event.clubLogoImageBase64,
+                          showBackground: widget.event.clubShowLogoBackground,
+                          size: 40,
+                          borderRadius: 12,
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.event.clubName,
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w700)),
+                            Text('Organized by ${widget.event.clubName}',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: cs.onSurface.withValues(alpha: 0.5))),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -278,6 +343,32 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     color: const Color(0xFF22C55E),
                     expand: true,
                   ),
+                  if (widget.event.hasCapacityLimit) ...[
+                    const SizedBox(height: 10),
+                    InfoChip(
+                      icon: Icons.groups_rounded,
+                      label:
+                          '${widget.event.registeredCount}/${widget.event.maxParticipants} registered',
+                      color: const Color(0xFF6366F1),
+                      expand: true,
+                    ),
+                  ],
+                  if (widget.event.requiresPayment) ...[
+                    const SizedBox(height: 10),
+                    InfoChip(
+                      icon: Icons.payments_rounded,
+                      label: 'Payment required: ${widget.event.feeLabel}',
+                      color: const Color(0xFF14B8A6),
+                      expand: true,
+                    ),
+                  ],
+                  if (widget.event.hasExternalForm) ...[
+                    const SizedBox(height: 10),
+                    _ExternalFormPanel(
+                      url: widget.event.externalFormUrl!.trim(),
+                      onCopy: _copyExternalForm,
+                    ),
+                  ],
                   if (widget.event.latitude != null &&
                       widget.event.longitude != null) ...[
                     const SizedBox(height: 12),
@@ -299,6 +390,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         height: 1.7,
                         color: cs.onSurface.withValues(alpha: 0.75)),
                   ),
+                  if (widget.event.hasRegistrationRequirement) ...[
+                    const SizedBox(height: 20),
+                    const Text('Registration Requirement',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.event.registrationRequirementPrompt?.trim()
+                                  .isNotEmpty ==
+                              true
+                          ? widget.event.registrationRequirementPrompt!.trim()
+                          : 'Additional information is required when registering.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        color: cs.onSurface.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   // Photo gallery
                   const Text('Photos',
@@ -326,40 +436,116 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 offset: const Offset(0, -4))
           ],
         ),
-        child: _isRegistered
-            ? Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.4)),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: Color(0xFF22C55E), size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      "You're registered!",
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF22C55E)),
+        child: Row(
+          children: [
+            Expanded(
+              child: _isRegistered
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isPending
+                                ? Icons.hourglass_top_rounded
+                                : Icons.check_circle_rounded,
+                            color: statusColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isPending
+                                ? 'Pending approval'
+                                : "You're registered!",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : FilledButton.icon(
+                      onPressed:
+                          widget.event.isFull ? null : _confirmRegistration,
+                      icon: const Icon(Icons.confirmation_number_rounded,
+                          size: 20),
+                      label: Text(widget.event.isFull ? 'Event Full' : 'Register Now'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                      ),
                     ),
-                  ],
-                ),
-              )
-            : FilledButton.icon(
-                onPressed: _confirmRegistration,
-                icon:
-                    const Icon(Icons.confirmation_number_rounded, size: 20),
-                label: const Text('Register Now'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 52),
+            ),
+            const SizedBox(width: 10),
+            IconButton.filledTonal(
+              onPressed: _shareEvent,
+              icon: const Icon(Icons.send_rounded),
+              tooltip: 'Share',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExternalFormPanel extends StatelessWidget {
+  final String url;
+  final VoidCallback onCopy;
+
+  const _ExternalFormPanel({
+    required this.url,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.link_rounded, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'External form',
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
+              TextButton.icon(
+                onPressed: onCopy,
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copy'),
+              ),
+            ],
+          ),
+          SelectableText(
+            url,
+            style: TextStyle(
+              fontSize: 12,
+              color: cs.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

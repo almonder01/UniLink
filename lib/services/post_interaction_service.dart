@@ -53,6 +53,32 @@ class PostInteractionService {
     });
   }
 
+  Future<void> updateComment({
+    required String postId,
+    required String commentId,
+    required String text,
+  }) async {
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return;
+    await _commentsRef(postId).doc(commentId).update({
+      'text': cleanText,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> deleteComment({
+    required String postId,
+    required String commentId,
+  }) async {
+    await _db.runTransaction((tx) async {
+      final commentRef = _commentsRef(postId).doc(commentId);
+      final commentDoc = await tx.get(commentRef);
+      if (!commentDoc.exists) return;
+      tx.delete(commentRef);
+      tx.update(_postRef(postId), {'commentCount': FieldValue.increment(-1)});
+    });
+  }
+
   Stream<List<PostComment>> commentsStream(String postId) {
     return _commentsRef(postId)
         .orderBy('createdAt', descending: true)

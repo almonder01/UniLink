@@ -1,12 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/club.dart';
 import '../../models/event.dart';
+import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/club_follow_provider.dart';
+import '../../screens/chat/club_room_chat_screen.dart';
+import '../../screens/chat/direct_chat_screen.dart';
+import '../../screens/chat/share_to_chat_sheet.dart';
+import '../../services/club_membership_service.dart';
+import '../../services/club_room_service.dart';
 import '../../services/database_service.dart';
+import '../../services/direct_chat_service.dart';
 import '../../services/event_service.dart';
+import '../../services/membership_request_service.dart';
 import '../../widgets/base64_image.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/identity_avatar.dart';
@@ -27,14 +34,21 @@ class ClubDetailScreen extends StatefulWidget {
 class _ClubDetailScreenState extends State<ClubDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
-  List<dynamic> _posts = [];
+  List<PostModel> _posts = [];
   List<EventModel> _events = [];
   List<Map<String, dynamic>> _visibleMembers = [];
+  List<Map<String, dynamic>> _visibleFollowers = [];
+  int _followerCount = 0;
+  bool _canUseRooms = false;
+  String? _membershipRequestStatus;
+  final _membershipService = ClubMembershipService();
+  final _roomService = ClubRoomService();
+  final _directChatService = DirectChatService();
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _loadData();
   }
 
@@ -50,66 +64,94 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     final events =
         await EventService().getEventsByClub(widget.club.id, userId: userId);
     final members = await _loadVisibleMembers();
+    final followers = await _membershipService.followerProfilesForClub(
+      widget.club.id,
+      publicOnly: false,
+    );
+    final visibleFollowers = followers
+        .where((follower) => follower['showInClubFollowers'] != false)
+        .toList();
+    final isManager = userId != null && userId == widget.club.managerId;
+    final canUseRooms = isManager ||
+        (userId != null &&
+            await _membershipService.isMember(widget.club.id, userId));
+    final membershipRequest = userId == null || canUseRooms
+        ? null
+        : await MembershipRequestService().getRequest(
+            clubId: widget.club.id,
+            userId: userId,
+          );
     if (mounted) {
       setState(() {
         _posts = posts;
         _events = events;
         _visibleMembers = members;
+        _visibleFollowers = visibleFollowers;
+        _followerCount = followers.length;
+        _canUseRooms = canUseRooms;
+        _membershipRequestStatus = membershipRequest?.status;
       });
     }
   }
 
   Future<List<Map<String, dynamic>>> _loadVisibleMembers() async {
-    final db = FirebaseFirestore.instance;
-    final followsSnap = await db
-        .collection('user_follows')
-        .where('club_ids', arrayContains: widget.club.id)
-        .get();
-    if (followsSnap.docs.isEmpty) return [];
-
-    final uids = followsSnap.docs.map((doc) => doc.id).toList();
-    final members = <Map<String, dynamic>>[];
-    const chunkSize = 10;
-    for (var i = 0; i < uids.length; i += chunkSize) {
-      final chunk = uids.sublist(i, (i + chunkSize).clamp(0, uids.length));
-      final profilesSnap = await db
-          .collection('profiles')
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-
-      for (final doc in profilesSnap.docs) {
-        final data = doc.data();
-        if (data['show_in_club_members'] == false) continue;
-        members.add({
-          'name': data['name'] as String? ?? 'Student',
-          'email': data['email'] as String? ?? '',
-          'major': data['major'] as String? ?? '',
-          'gender': data['gender'] as String? ?? 'male',
-          'photoBase64': data['photo_base64'] as String? ?? '',
-        });
-      }
-    }
-    members.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
-    return members;
+    return _membershipService.memberProfilesForClub(
+      widget.club,
+      publicOnly: true,
+    );
   }
 
   Future<void> _registerForEvent(EventModel event) async {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null || event.isRegistered) return;
+    if (event.isFull) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This event is full.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-    final confirmed = await showEventRegistrationDialog(
+    final submission = await showEventRegistrationDialog(
       context,
       event: event,
     );
-    if (!confirmed || !mounted) return;
+    if (submission == null || !mounted) return;
 
     try {
-      await EventService().registerForEvent(event: event, user: user);
+      await EventService().registerForEvent(
+        event: event,
+        user: user,
+        paymentReceiptBase64: submission.paymentReceiptBase64,
+        requirementTextResponse: submission.requirementTextResponse,
+        requirementFileBase64: submission.requirementFileBase64,
+      );
       if (!mounted) return;
-      setState(() => event.isRegistered = true);
+      final status =
+          event.requiresPayment || event.hasRegistrationRequirement
+              ? 'pending'
+              : 'approved';
+      setState(() {
+        final index = _events.indexWhere((item) => item.id == event.id);
+        if (index != -1) {
+          _events[index] = event.copyWith(
+            isRegistered: true,
+            registrationStatus: status,
+          );
+        } else {
+          event.isRegistered = true;
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You're registered!"),
+        SnackBar(
+          content: Text(
+            event.requiresPayment
+                    || event.hasRegistrationRequirement
+                ? 'Registration submitted for approval.'
+                : "You're registered!",
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -124,6 +166,115 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     }
   }
 
+  Future<void> _openDirectChat(Map<String, dynamic> person) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null || person['uid'] == user.id) return;
+
+    try {
+      final chatId = await _directChatService.startChat(
+        currentUser: user,
+        target: person,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DirectChatScreen(
+            chatId: chatId,
+            title: person['name'] as String? ?? 'Chat',
+            user: user,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePost(PostModel post) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showPost(context, post: post, user: user);
+  }
+
+  Future<void> _shareEvent(EventModel event) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showEvent(context, event: event, user: user);
+  }
+
+  Future<void> _requestMembership() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await MembershipRequestService().requestMembership(
+      club: widget.club,
+      user: user,
+    );
+    if (!mounted) return;
+    setState(() => _membershipRequestStatus = 'pending');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Membership request sent.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _openRoomFull() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    final room = await _roomService.ensureDefaultRoom(
+      club: widget.club,
+      createdBy: user.id,
+    );
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClubRoomChatScreen(
+          room: room,
+          club: widget.club,
+          user: user,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRoomSheet() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    final room = await _roomService.ensureDefaultRoom(
+      club: widget.club,
+      createdBy: user.id,
+    );
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SizedBox(
+        height: MediaQuery.sizeOf(sheetContext).height * 0.72,
+        child: ClubRoomChatPanel(
+          room: room,
+          club: widget.club,
+          user: user,
+          onOpenFull: () {
+            Navigator.pop(sheetContext);
+            _openRoomFull();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -132,6 +283,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     final isFollowed = followProvider.isFollowing(userId, widget.club.id);
     final clubColor = Color(int.parse(widget.club.logoColor, radix: 16));
     return Scaffold(
+      floatingActionButton: _canUseRooms
+          ? GestureDetector(
+              onDoubleTap: _openRoomFull,
+              child: FloatingActionButton(
+                heroTag: 'club-room-${widget.club.id}',
+                onPressed: _openRoomSheet,
+                child: const Icon(Icons.forum_rounded),
+              ),
+            )
+          : null,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
@@ -281,7 +442,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _StatItem(
-                      value: '${widget.club.memberCount}', label: 'Members'),
+                      value: '$_followerCount',
+                      label: 'Followers'),
                   _Divider(),
                   _StatItem(value: '${_posts.length}', label: 'Posts'),
                   _Divider(),
@@ -300,8 +462,9 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                   Tab(text: 'Posts'),
                   Tab(text: 'Events'),
                   Tab(text: 'Members'),
+                  Tab(text: 'Followers'),
                 ],
-                isScrollable: false,
+                isScrollable: true,
                 indicatorColor: cs.primary,
                 labelColor: cs.primary,
                 labelStyle:
@@ -315,9 +478,28 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           controller: _tabCtrl,
           children: [
             _AboutTab(club: widget.club, clubColor: clubColor),
-            _PostsTab(posts: _posts),
-            _EventsTab(events: _events, onRegister: _registerForEvent),
-            _MembersTab(members: _visibleMembers),
+            _PostsTab(posts: _posts, onShare: _sharePost),
+            _EventsTab(
+              events: _events,
+              onRegister: _registerForEvent,
+              onShare: _shareEvent,
+            ),
+            _PeopleTab(
+              people: _visibleMembers,
+              emptyMessage: 'No public members yet',
+              onMessage: _openDirectChat,
+              header: _canUseRooms
+                  ? null
+                  : _MembershipRequestBanner(
+                      status: _membershipRequestStatus,
+                      onRequest: _requestMembership,
+                    ),
+            ),
+            _PeopleTab(
+              people: _visibleFollowers,
+              emptyMessage: 'No public followers yet',
+              onMessage: _openDirectChat,
+            ),
           ],
         ),
       ),
@@ -387,11 +569,9 @@ class _AboutTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      children: [
           if (club.managerName != null) ...[
             Row(
               children: [
@@ -450,14 +630,14 @@ class _AboutTab extends StatelessWidget {
             MediaGallery(images: club.galleryBase64List),
           ],
         ],
-      ),
     );
   }
 }
 
 class _PostsTab extends StatelessWidget {
-  final List<dynamic> posts;
-  const _PostsTab({required this.posts});
+  final List<PostModel> posts;
+  final ValueChanged<PostModel> onShare;
+  const _PostsTab({required this.posts, required this.onShare});
 
   @override
   Widget build(BuildContext context) {
@@ -472,6 +652,7 @@ class _PostsTab extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 12),
         child: PostCard(
           post: posts[i],
+          onShare: () => onShare(posts[i]),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => PostDetailScreen(post: posts[i])),
@@ -485,7 +666,12 @@ class _PostsTab extends StatelessWidget {
 class _EventsTab extends StatelessWidget {
   final List<EventModel> events;
   final ValueChanged<EventModel> onRegister;
-  const _EventsTab({required this.events, required this.onRegister});
+  final ValueChanged<EventModel> onShare;
+  const _EventsTab({
+    required this.events,
+    required this.onRegister,
+    required this.onShare,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -504,36 +690,57 @@ class _EventsTab extends StatelessWidget {
               builder: (_) => EventDetailScreen(event: events[i])),
         ),
         onRegister: () => onRegister(events[i]),
+        onShare: () => onShare(events[i]),
       ),
     );
   }
 }
 
-class _MembersTab extends StatelessWidget {
-  final List<Map<String, dynamic>> members;
+class _PeopleTab extends StatelessWidget {
+  final List<Map<String, dynamic>> people;
+  final String emptyMessage;
+  final ValueChanged<Map<String, dynamic>> onMessage;
+  final Widget? header;
 
-  const _MembersTab({required this.members});
+  const _PeopleTab({
+    required this.people,
+    required this.emptyMessage,
+    required this.onMessage,
+    this.header,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (members.isEmpty) {
-      return const _EmptyTabState(
-        icon: Icons.people_outline_rounded,
-        message: 'No public members yet',
+    if (people.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          if (header != null) header!,
+          SizedBox(
+            height: 360,
+            child: _EmptyTabState(
+              icon: Icons.people_outline_rounded,
+              message: emptyMessage,
+            ),
+          ),
+        ],
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: members.length,
+      itemCount: people.length + (header == null ? 0 : 1),
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
       itemBuilder: (context, index) {
-        final member = members[index];
-        final name = member['name'] as String;
-        final gender = member['gender'] as String;
+        if (header != null && index == 0) return header!;
+        final peopleIndex = header == null ? index : index - 1;
+        final person = people[peopleIndex];
+        final name = person['name'] as String;
+        final gender = person['gender'] as String;
+        final role = person['role'] as String?;
         return ListTile(
           leading: UserAvatar(
-            photoBase64: member['photoBase64'] as String?,
+            photoBase64: person['photoBase64'] as String?,
             gender: gender,
             radius: 20,
           ),
@@ -542,17 +749,70 @@ class _MembersTab extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           subtitle: Text(
-            (member['major'] as String).isNotEmpty
-                ? member['major'] as String
-                : member['email'] as String,
+            role == 'Manager'
+                ? 'Club manager'
+                : (person['major'] as String).isNotEmpty
+                    ? person['major'] as String
+                    : person['email'] as String,
           ),
-          trailing: Icon(
-            gender == 'female' ? Icons.female_rounded : Icons.male_rounded,
-            size: 20,
+          trailing: IconButton(
+            tooltip: 'Message',
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
             color: Theme.of(context).colorScheme.primary,
+            onPressed: () => onMessage(person),
           ),
         );
       },
+    );
+  }
+}
+
+class _MembershipRequestBanner extends StatelessWidget {
+  final String? status;
+  final VoidCallback onRequest;
+
+  const _MembershipRequestBanner({
+    required this.status,
+    required this.onRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final label = switch (status) {
+      'pending' => 'Membership request pending',
+      'payment_requested' => 'Payment requested by club manager',
+      'approved' => 'Membership approved',
+      'rejected' => 'Request rejected',
+      _ => 'Request membership',
+    };
+    final canRequest = status == null || status == 'rejected';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cs.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.how_to_reg_rounded, color: cs.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            FilledButton.tonal(
+              onPressed: canRequest ? onRequest : null,
+              child: Text(canRequest ? 'Request' : 'Sent'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

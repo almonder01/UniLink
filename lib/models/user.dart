@@ -12,6 +12,12 @@ class UserModel {
   final String? managedClubId;
   final String? gender;
   final bool showInClubMembers;
+  final bool showInClubFollowers;
+  final String messagePrivacy; // everyone | club_members
+  final bool notifyChatMessages;
+  final bool notifyChatFromMembers;
+  final bool notifyChatFromManagers;
+  final bool notifyChatFromEveryone;
 
   const UserModel({
     required this.id,
@@ -27,6 +33,12 @@ class UserModel {
     this.managedClubId,
     this.gender,
     this.showInClubMembers = true,
+    this.showInClubFollowers = true,
+    this.messagePrivacy = 'everyone',
+    this.notifyChatMessages = true,
+    this.notifyChatFromMembers = true,
+    this.notifyChatFromManagers = true,
+    this.notifyChatFromEveryone = true,
   });
 
   static UserModel fromMap(Map<String, dynamic> m) => UserModel(
@@ -43,6 +55,15 @@ class UserModel {
         gender: m['gender'] as String?,
         managedClubId: m['managed_club_id'] as String?,
         showInClubMembers: m['show_in_club_members'] as bool? ?? true,
+        showInClubFollowers: m['show_in_club_followers'] as bool? ?? true,
+        messagePrivacy: m['message_privacy'] as String? ?? 'everyone',
+        notifyChatMessages: m['notify_chat_messages'] as bool? ?? true,
+        notifyChatFromMembers:
+            m['notify_chat_from_members'] as bool? ?? true,
+        notifyChatFromManagers:
+            m['notify_chat_from_managers'] as bool? ?? true,
+        notifyChatFromEveryone:
+            m['notify_chat_from_everyone'] as bool? ?? true,
       );
 
   Map<String, dynamic> toMap() => {
@@ -58,6 +79,12 @@ class UserModel {
         'cover_color': coverColor,
         if (gender != null) 'gender': gender,
         'show_in_club_members': showInClubMembers,
+        'show_in_club_followers': showInClubFollowers,
+        'message_privacy': messagePrivacy,
+        'notify_chat_messages': notifyChatMessages,
+        'notify_chat_from_members': notifyChatFromMembers,
+        'notify_chat_from_managers': notifyChatFromManagers,
+        'notify_chat_from_everyone': notifyChatFromEveryone,
         if (managedClubId != null) 'managed_club_id': managedClubId,
       };
 
@@ -70,6 +97,12 @@ class UserModel {
     String? coverColor,
     String? gender,
     bool? showInClubMembers,
+    bool? showInClubFollowers,
+    String? messagePrivacy,
+    bool? notifyChatMessages,
+    bool? notifyChatFromMembers,
+    bool? notifyChatFromManagers,
+    bool? notifyChatFromEveryone,
   }) {
     return UserModel(
       id: id,
@@ -85,6 +118,16 @@ class UserModel {
       coverColor: coverColor ?? this.coverColor,
       managedClubId: managedClubId,
       showInClubMembers: showInClubMembers ?? this.showInClubMembers,
+      showInClubFollowers:
+          showInClubFollowers ?? this.showInClubFollowers,
+      messagePrivacy: messagePrivacy ?? this.messagePrivacy,
+      notifyChatMessages: notifyChatMessages ?? this.notifyChatMessages,
+      notifyChatFromMembers:
+          notifyChatFromMembers ?? this.notifyChatFromMembers,
+      notifyChatFromManagers:
+          notifyChatFromManagers ?? this.notifyChatFromManagers,
+      notifyChatFromEveryone:
+          notifyChatFromEveryone ?? this.notifyChatFromEveryone,
     );
   }
 }

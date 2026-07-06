@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/club.dart';
 import '../models/notification_model.dart';
+import '../models/club_room.dart';
+import '../models/user.dart';
+import 'club_membership_service.dart';
 
 class NotificationService {
   static final NotificationService _i = NotificationService._();
@@ -59,5 +63,182 @@ class NotificationService {
       });
     }
     await batch.commit();
+  }
+
+  Future<void> sendRoomInvite({
+    required String userId,
+    required String senderName,
+    required ClubModel club,
+    required ClubRoom room,
+  }) async {
+    await _col(userId).add({
+      'title': '${club.name} room invite',
+      'body': '$senderName invited you to join ${room.name}.',
+      'type': 'room_invite',
+      'color': club.logoColor,
+      'club_id': club.id,
+      'ref_id': room.id,
+      'room_name': room.name,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<void> sendEventInviteToFollowers({
+    required ClubModel club,
+    required String eventId,
+    required String eventTitle,
+  }) async {
+    await notifyFollowers(
+      clubId: club.id,
+      title: 'Event invitation from ${club.name}',
+      body: eventTitle,
+      type: 'event_invite',
+      color: club.logoColor,
+      refId: eventId,
+    );
+  }
+
+  Future<void> sendEventInviteByEmail({
+    required ClubModel club,
+    required String eventId,
+    required String eventTitle,
+    required String email,
+  }) async {
+    final snap = await _db
+        .collection('profiles')
+        .where('email', isEqualTo: email.trim())
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      throw Exception('No user found with that email.');
+    }
+    await _col(snap.docs.first.id).add({
+      'title': 'Event invitation from ${club.name}',
+      'body': eventTitle,
+      'type': 'event_invite',
+      'color': club.logoColor,
+      'club_id': club.id,
+      'ref_id': eventId,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<void> sendEventRegistrationStatus({
+    required String userId,
+    required String eventTitle,
+    required String clubId,
+    required String eventId,
+    required String status,
+    String? message,
+  }) async {
+    final statusLabel = switch (status) {
+      'approved' => 'approved',
+      'rejected' => 'rejected',
+      'cancelled' => 'cancelled',
+      _ => 'updated',
+    };
+    await _col(userId).add({
+      'title': 'Event registration $statusLabel',
+      'body': message?.trim().isNotEmpty == true
+          ? message!.trim()
+          : 'Your registration for $eventTitle was $statusLabel.',
+      'type': 'event_registration',
+      'color': status == 'approved' ? 'FF22C55E' : 'FFEF4444',
+      'club_id': clubId,
+      'ref_id': eventId,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<void> sendClubPaymentRequest({
+    required String userId,
+    required String clubId,
+    required String clubName,
+    required String requestId,
+    required String amountLabel,
+  }) async {
+    await _col(userId).add({
+      'title': '$clubName payment request',
+      'body': 'Please upload your receipt for $amountLabel.',
+      'type': 'club_payment_request',
+      'color': 'FF14B8A6',
+      'club_id': clubId,
+      'ref_id': requestId,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<void> sendMembershipRequestStatus({
+    required String userId,
+    required ClubModel club,
+    required String status,
+  }) async {
+    final approved = status == 'approved';
+    await _col(userId).add({
+      'title': '${club.name} membership ${approved ? 'approved' : 'updated'}',
+      'body': approved
+          ? 'You are now a member of ${club.name}.'
+          : 'Your membership request for ${club.name} was rejected.',
+      'type': 'club',
+      'color': club.logoColor,
+      'club_id': club.id,
+      'ref_id': club.id,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<void> sendDirectMessageNotification({
+    required String recipientId,
+    required UserModel sender,
+    required String chatId,
+    required String preview,
+  }) async {
+    final shouldNotify = await _shouldNotifyDirectMessage(
+      recipientId: recipientId,
+      sender: sender,
+    );
+    if (!shouldNotify) return;
+
+    await _col(recipientId).add({
+      'title': 'Message from ${sender.name}',
+      'body': preview.trim().isEmpty ? 'Sent an attachment.' : preview.trim(),
+      'type': 'direct_message',
+      'color': 'FF14B8A6',
+      'club_id': '',
+      'ref_id': chatId,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
+  }
+
+  Future<bool> _shouldNotifyDirectMessage({
+    required String recipientId,
+    required UserModel sender,
+  }) async {
+    final doc = await _db.collection('profiles').doc(recipientId).get();
+    final data = doc.data();
+    if (data == null) return true;
+    if (data['notify_chat_messages'] == false) return false;
+
+    final senderIsManager =
+        sender.role == 'manager' || (sender.managedClubId ?? '').isNotEmpty;
+    if (senderIsManager) {
+      return data['notify_chat_from_managers'] as bool? ?? true;
+    }
+
+    final sharesClub = await ClubMembershipService().usersShareMembership(
+      sender.id,
+      recipientId,
+    );
+    if (sharesClub) {
+      return data['notify_chat_from_members'] as bool? ?? true;
+    }
+
+    return data['notify_chat_from_everyone'] as bool? ?? true;
   }
 }

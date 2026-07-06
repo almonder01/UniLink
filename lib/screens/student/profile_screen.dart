@@ -6,12 +6,16 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/club_follow_provider.dart';
 import '../../providers/club_provider.dart';
+import '../../services/club_membership_service.dart';
+import '../../services/direct_chat_service.dart';
 import '../../widgets/identity_avatar.dart';
+import '../chat/direct_chats_screen.dart';
 import 'club_detail_screen.dart';
 import 'settings_screen.dart';
 import 'about_screen.dart';
 import 'support_screen.dart';
 import 'saved_posts_screen.dart';
+import 'my_requests_screen.dart';
 import 'widgets/confirm_sheet.dart';
 import 'widgets/followed_club_tile.dart';
 import 'widgets/profile_widgets.dart';
@@ -24,8 +28,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _nameCtrl = TextEditingController();
   final _majorCtrl = TextEditingController();
   final _picker = ImagePicker();
+  bool _editingName = false;
   bool _editingMajor = false;
   bool _mediaInitialized = false;
   String? _profilePhotoBase64;
@@ -44,6 +50,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final user = context.read<AuthProvider>().currentUser;
+    if (user != null && _nameCtrl.text.isEmpty) {
+      _nameCtrl.text = user.name;
+    }
     if (user != null && _majorCtrl.text.isEmpty) {
       _majorCtrl.text = user.major ?? '';
     }
@@ -56,6 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _majorCtrl.dispose();
     super.dispose();
   }
@@ -155,6 +165,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final followedIds = followProvider.getFollowedIds(user.id);
     final followedClubs =
         allClubs.where((c) => followedIds.contains(c.id)).toList();
+    final memberClubIdsFuture =
+        ClubMembershipService().memberClubIdsForUser(user.id);
     final coverColor = _colorFromHex(user.coverColor);
     final coverBytes = decodeBase64Image(_coverPhotoBase64);
     final hasCoverPhoto = coverBytes != null;
@@ -301,6 +313,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SectionLabel('Personal Info'),
+                  const SizedBox(height: 10),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.badge_rounded,
+                              size: 20,
+                              color: cs.onSurface.withValues(alpha: 0.5)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _editingName
+                                ? TextField(
+                                    controller: _nameCtrl,
+                                    autofocus: true,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Enter your name',
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                      fillColor: Colors.transparent,
+                                    ),
+                                    onSubmitted: (_) async {
+                                      await context
+                                          .read<AuthProvider>()
+                                          .updateProfile(name: _nameCtrl.text);
+                                      setState(() => _editingName = false);
+                                    },
+                                  )
+                                : Text(
+                                    user.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _editingName
+                                  ? Icons.check_rounded
+                                  : Icons.edit_rounded,
+                              size: 18,
+                              color: cs.primary,
+                            ),
+                            onPressed: () async {
+                              if (_editingName) {
+                                await context
+                                    .read<AuthProvider>()
+                                    .updateProfile(name: _nameCtrl.text);
+                              }
+                              setState(() => _editingName = !_editingName);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   // ── Academic Info ─────────────────────────────────────────
                   const SectionLabel('Academic Info'),
                   const SizedBox(height: 10),
@@ -414,6 +483,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // ── Following ─────────────────────────────────────────────
+                  FutureBuilder<List<String>>(
+                    future: memberClubIdsFuture,
+                    builder: (context, snapshot) {
+                      final memberIds = snapshot.data?.toSet() ?? <String>{};
+                      if ((user.managedClubId ?? '').isNotEmpty) {
+                        memberIds.add(user.managedClubId!);
+                      }
+                      final memberClubs = allClubs
+                          .where((club) => memberIds.contains(club.id))
+                          .toList();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const SectionLabel('Member Clubs'),
+                              const SizedBox(width: 8),
+                              if (memberClubs.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: cs.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '${memberClubs.length}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Card(
+                            child: memberClubs.isEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 24, horizontal: 16),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.badge_outlined,
+                                            size: 22,
+                                            color: cs.onSurface
+                                                .withValues(alpha: 0.3)),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          snapshot.connectionState ==
+                                                  ConnectionState.waiting
+                                              ? 'Loading member clubs...'
+                                              : 'No club memberships yet',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: cs.onSurface
+                                                .withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Column(
+                                    children: [
+                                      for (int i = 0;
+                                          i < memberClubs.length;
+                                          i++) ...[
+                                        if (i > 0)
+                                          const Divider(height: 1, indent: 56),
+                                        FollowedClubTile(
+                                          club: memberClubs[i],
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ClubDetailScreen(
+                                                  club: memberClubs[i]),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      );
+                    },
+                  ),
+
                   Row(
                     children: [
                       const SectionLabel('Following'),
@@ -488,6 +648,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Card(
                     child: Column(
                       children: [
+                        StreamBuilder<int>(
+                          stream: DirectChatService().unreadTotalStream(user.id),
+                          builder: (context, snapshot) => MenuTile(
+                            icon: Icons.mark_chat_unread_rounded,
+                            label: 'Messages',
+                            showDot: (snapshot.data ?? 0) > 0,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DirectChatsScreen(user: user),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        MenuTile(
+                          icon: Icons.assignment_turned_in_rounded,
+                          label: 'My Requests',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MyRequestsScreen(),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 1, indent: 56),
                         MenuTile(
                           icon: Icons.bookmark_rounded,
                           label: 'Saved Posts',
