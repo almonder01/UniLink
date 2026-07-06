@@ -18,6 +18,8 @@ class PostCard extends StatelessWidget {
   final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onSave;
+  final VoidCallback? onShare;
+  final VoidCallback? onClubTap;
 
   const PostCard({
     super.key,
@@ -30,6 +32,8 @@ class PostCard extends StatelessWidget {
     this.onLike,
     this.onComment,
     this.onSave,
+    this.onShare,
+    this.onClubTap,
   });
 
   @override
@@ -106,34 +110,40 @@ class PostCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      ClubAvatar(
-                        color: logoColor,
-                        logoBase64: post.clubLogoImageBase64,
-                        showBackground: post.clubShowLogoBackground,
-                        size: 30,
-                        borderRadius: 9,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(post.clubName,
-                                style: const TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis),
-                            Text(
-                              DateFormat('MMM d, y').format(post.createdAt),
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: cs.onSurface.withValues(alpha: 0.5)),
-                            ),
-                          ],
+                  InkWell(
+                    onTap: onClubTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Row(
+                      children: [
+                        ClubAvatar(
+                          color: logoColor,
+                          logoBase64: post.clubLogoImageBase64,
+                          showBackground: post.clubShowLogoBackground,
+                          size: 30,
+                          borderRadius: 9,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(post.clubName,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis),
+                              Text(
+                                DateFormat('MMM d, y').format(post.createdAt),
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color:
+                                        cs.onSurface.withValues(alpha: 0.5)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -185,6 +195,12 @@ class PostCard extends StatelessWidget {
                           label: 'Save',
                           color: isSaved ? cs.primary : null,
                           onTap: onSave,
+                        ),
+                      if (onShare != null)
+                        _ActionChip(
+                          icon: Icons.send_rounded,
+                          label: 'Share',
+                          onTap: onShare,
                         ),
                     ],
                   ),

@@ -56,6 +56,12 @@ class AuthProvider extends ChangeNotifier {
         'gender': gender,
         'cover_color': 'FF6366F1',
         'show_in_club_members': true,
+        'show_in_club_followers': true,
+        'message_privacy': 'everyone',
+        'notify_chat_messages': true,
+        'notify_chat_from_members': true,
+        'notify_chat_from_managers': true,
+        'notify_chat_from_everyone': true,
       }).catchError((_) {});
       ClubService().seedIfEmpty().catchError((_) {});
       return role;
@@ -118,6 +124,12 @@ class AuthProvider extends ChangeNotifier {
     String? coverImageBase64,
     String? coverColor,
     bool? showInClubMembers,
+    bool? showInClubFollowers,
+    String? messagePrivacy,
+    bool? notifyChatMessages,
+    bool? notifyChatFromMembers,
+    bool? notifyChatFromManagers,
+    bool? notifyChatFromEveryone,
   }) async {
     if (_currentUser == null) return;
     final updates = <String, dynamic>{};
@@ -132,6 +144,24 @@ class AuthProvider extends ChangeNotifier {
     if (showInClubMembers != null) {
       updates['show_in_club_members'] = showInClubMembers;
     }
+    if (showInClubFollowers != null) {
+      updates['show_in_club_followers'] = showInClubFollowers;
+    }
+    if (messagePrivacy != null) {
+      updates['message_privacy'] = messagePrivacy;
+    }
+    if (notifyChatMessages != null) {
+      updates['notify_chat_messages'] = notifyChatMessages;
+    }
+    if (notifyChatFromMembers != null) {
+      updates['notify_chat_from_members'] = notifyChatFromMembers;
+    }
+    if (notifyChatFromManagers != null) {
+      updates['notify_chat_from_managers'] = notifyChatFromManagers;
+    }
+    if (notifyChatFromEveryone != null) {
+      updates['notify_chat_from_everyone'] = notifyChatFromEveryone;
+    }
     if (updates.isEmpty) return;
     await _db.collection('profiles').doc(_currentUser!.id).update(updates);
     _currentUser = _currentUser!.copyWith(
@@ -142,6 +172,12 @@ class AuthProvider extends ChangeNotifier {
       coverImageBase64: coverImageBase64,
       coverColor: coverColor,
       showInClubMembers: showInClubMembers,
+      showInClubFollowers: showInClubFollowers,
+      messagePrivacy: messagePrivacy,
+      notifyChatMessages: notifyChatMessages,
+      notifyChatFromMembers: notifyChatFromMembers,
+      notifyChatFromManagers: notifyChatFromManagers,
+      notifyChatFromEveryone: notifyChatFromEveryone,
     );
     notifyListeners();
   }

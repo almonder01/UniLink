@@ -3,12 +3,15 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/club_provider.dart';
 import '../../services/post_interaction_service.dart';
 import '../../services/saved_post_service.dart';
 import '../../widgets/base64_image.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_gallery.dart';
 import '../../widgets/post_comment_sheet.dart';
+import '../chat/share_to_chat_sheet.dart';
+import 'club_detail_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final PostModel post;
@@ -84,6 +87,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         onCommentAdded: () {
           if (mounted) setState(() => _commentCount += 1);
         },
+        onCommentDeleted: () {
+          if (mounted && _commentCount > 0) {
+            setState(() => _commentCount -= 1);
+          }
+        },
       ),
     );
   }
@@ -111,6 +119,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _sharePost() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    await ShareToChatSheet.showPost(context, post: widget.post, user: user);
+  }
+
+  void _openClub() {
+    final club = context.read<ClubProvider>().getById(widget.post.clubId);
+    if (club == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ClubDetailScreen(club: club)),
+    );
   }
 
   @override
@@ -218,32 +241,36 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Club row
-                  Row(
-                    children: [
-                      ClubAvatar(
-                        color: logoColor,
-                        logoBase64: widget.post.clubLogoImageBase64,
-                        showBackground: widget.post.clubShowLogoBackground,
-                        size: 40,
-                        borderRadius: 12,
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.post.clubName,
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w700)),
-                          Text(
-                            DateFormat('EEEE, MMMM d, y')
-                                .format(widget.post.createdAt),
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: cs.onSurface.withValues(alpha: 0.5)),
-                          ),
-                        ],
-                      ),
-                    ],
+                  InkWell(
+                    onTap: _openClub,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Row(
+                      children: [
+                        ClubAvatar(
+                          color: logoColor,
+                          logoBase64: widget.post.clubLogoImageBase64,
+                          showBackground: widget.post.clubShowLogoBackground,
+                          size: 40,
+                          borderRadius: 12,
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.post.clubName,
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w700)),
+                            Text(
+                              DateFormat('EEEE, MMMM d, y')
+                                  .format(widget.post.createdAt),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: cs.onSurface.withValues(alpha: 0.5)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -300,6 +327,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         label: 'Save',
                         color: _saved ? cs.primary : null,
                         onTap: _toggleSaved,
+                      ),
+                      _ActionBtn(
+                        icon: Icons.send_rounded,
+                        label: 'Share',
+                        onTap: _sharePost,
                       ),
                     ],
                   ),

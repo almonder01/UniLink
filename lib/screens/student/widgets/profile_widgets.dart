@@ -23,6 +23,7 @@ class MenuTile extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final Color? color;
+  final bool showDot;
 
   const MenuTile({
     super.key,
@@ -30,6 +31,7 @@ class MenuTile extends StatelessWidget {
     required this.label,
     this.onTap,
     this.color,
+    this.showDot = false,
   });
 
   @override
@@ -38,7 +40,26 @@ class MenuTile extends StatelessWidget {
     final effectiveColor = color ?? cs.onSurface;
 
     return ListTile(
-      leading: Icon(icon, color: effectiveColor, size: 22),
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(icon, color: effectiveColor, size: 22),
+          if (showDot)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: cs.surface, width: 1.5),
+                ),
+              ),
+            ),
+        ],
+      ),
       title: Text(
         label,
         style: TextStyle(

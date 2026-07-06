@@ -5,6 +5,7 @@ import '../../services/event_service.dart';
 import '../../widgets/event_card.dart';
 import '../student/event_detail_screen.dart';
 import 'create_event_screen.dart';
+import 'event_dashboard_screen.dart';
 import 'menu_tile.dart';
 import 'three_dot_button.dart';
 
@@ -142,47 +143,111 @@ class EventsTabState extends State<EventsTab> {
     final cs = Theme.of(context).colorScheme;
 
     if (_events.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_outlined,
-                size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 12),
-            Text('No events yet. Tap + to create one.',
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
-          ],
-        ),
+      return Column(
+        children: [
+          _EventsHeader(club: widget.club),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_outlined,
+                      size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
+                  const SizedBox(height: 12),
+                  Text('No events yet. Tap + to create one.',
+                      style:
+                          TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _events.length,
-      itemBuilder: (ctx, i) {
-        final event = _events[i];
-        return Stack(
-          children: [
-            EventCard(
-              event: event,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EventDetailScreen(event: event),
+    return Column(
+      children: [
+        _EventsHeader(club: widget.club),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            itemCount: _events.length,
+            itemBuilder: (ctx, i) {
+              final event = _events[i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Stack(
+                  children: [
+                    EventCard(
+                      event: event,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EventDetailScreen(event: event),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: ThreeDotButton(
+                        onTap: (buttonContext) =>
+                            _showEventMenu(buttonContext, event),
+                      ),
+                    ),
+                  ],
                 ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EventsHeader extends StatelessWidget {
+  final ClubModel club;
+
+  const _EventsHeader({required this.club});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Events',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  'Create, edit, delete, and monitor event activity',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Event dashboard',
+            icon: const Icon(Icons.insights_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EventDashboardScreen(club: club),
               ),
             ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: ThreeDotButton(
-                onTap: (buttonContext) =>
-                    _showEventMenu(buttonContext, event),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 }

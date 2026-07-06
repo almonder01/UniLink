@@ -34,6 +34,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
+  final _feeCtrl = TextEditingController();
+  final _capacityCtrl = TextEditingController();
+  final _externalFormCtrl = TextEditingController();
+  final _requirementPromptCtrl = TextEditingController();
   final _picker = ImagePicker();
 
   DateTime? _selectedDate;
@@ -41,6 +45,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   LatLng? _selectedMapLocation;
   bool _saving = false;
   String _selectedColor = 'FFFF6B35';
+  String _feeCurrency = 'RM';
+  bool _requiresRegistrationText = false;
+  bool _requiresRegistrationFile = false;
   Uint8List? _coverImage;
   final List<Uint8List> _additionalImages = [];
 
@@ -58,6 +65,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _selectedColor = event.coverColor;
     _selectedDate = event.eventDate;
     _selectedTime = TimeOfDay.fromDateTime(event.eventDate);
+    _feeCtrl.text =
+        event.feeAmount == null ? '' : event.feeAmount!.toStringAsFixed(2);
+    _feeCurrency = event.feeCurrency;
+    _capacityCtrl.text =
+        event.maxParticipants == null ? '' : '${event.maxParticipants}';
+    _externalFormCtrl.text = event.externalFormUrl ?? '';
+    _requirementPromptCtrl.text = event.registrationRequirementPrompt ?? '';
+    _requiresRegistrationText = event.requiresRegistrationText;
+    _requiresRegistrationFile = event.requiresRegistrationFile;
     if (event.latitude != null && event.longitude != null) {
       _selectedMapLocation = LatLng(event.latitude!, event.longitude!);
     }
@@ -75,6 +91,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _locationCtrl.dispose();
+    _feeCtrl.dispose();
+    _capacityCtrl.dispose();
+    _externalFormCtrl.dispose();
+    _requirementPromptCtrl.dispose();
     super.dispose();
   }
 
@@ -182,6 +202,64 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _coverImage == null ? null : base64Encode(_coverImage!);
     final photoBase64List =
         _additionalImages.map((bytes) => base64Encode(bytes)).toList();
+    final rawFee = _feeCtrl.text.trim();
+    final feeAmount = rawFee.isEmpty ? null : double.tryParse(rawFee);
+    if (rawFee.isNotEmpty && (feeAmount == null || feeAmount <= 0)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid event fee or leave it empty.'),
+          ),
+        );
+      }
+      setState(() => _saving = false);
+      return;
+    }
+    final rawCapacity = _capacityCtrl.text.trim();
+    final maxParticipants =
+        rawCapacity.isEmpty ? null : int.tryParse(rawCapacity);
+    if (rawCapacity.isNotEmpty &&
+        (maxParticipants == null || maxParticipants <= 0)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid participant limit or leave it empty.'),
+          ),
+        );
+      }
+      setState(() => _saving = false);
+      return;
+    }
+    if (maxParticipants != null &&
+        widget.existingEvent != null &&
+        maxParticipants < widget.existingEvent!.registeredCount) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Limit cannot be below current registrations (${widget.existingEvent!.registeredCount}).',
+            ),
+          ),
+        );
+      }
+      setState(() => _saving = false);
+      return;
+    }
+    final externalFormUrl = _externalFormCtrl.text.trim();
+    if (externalFormUrl.isNotEmpty &&
+        !(externalFormUrl.startsWith('http://') ||
+            externalFormUrl.startsWith('https://'))) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('External form link must start with http:// or https://.'),
+          ),
+        );
+      }
+      setState(() => _saving = false);
+      return;
+    }
+    final requirementPrompt = _requirementPromptCtrl.text.trim();
 
     try {
       final existing = widget.existingEvent;
@@ -203,6 +281,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         coverImageBase64: coverImageBase64,
         photoBase64List: photoBase64List,
         eventDate: eventDate,
+        feeAmount: feeAmount,
+        feeCurrency: _feeCurrency,
+        maxParticipants: maxParticipants,
+        externalFormUrl: externalFormUrl.isEmpty ? null : externalFormUrl,
+        registrationRequirementPrompt:
+            requirementPrompt.isEmpty ? null : requirementPrompt,
+        requiresRegistrationText: _requiresRegistrationText,
+        requiresRegistrationFile: _requiresRegistrationFile,
         registeredCount: existing?.registeredCount ?? 0,
         attendedCount: existing?.attendedCount ?? 0,
       );
@@ -376,6 +462,29 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 onPickMap: _pickMapLocation,
               ),
               const SizedBox(height: 16),
+              _EventFeeCard(
+                feeCtrl: _feeCtrl,
+                currency: _feeCurrency,
+                onCurrencyChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _feeCurrency = value);
+                },
+              ),
+              const SizedBox(height: 16),
+              _RegistrationOptionsCard(
+                capacityCtrl: _capacityCtrl,
+                externalFormCtrl: _externalFormCtrl,
+                requirementPromptCtrl: _requirementPromptCtrl,
+                requiresText: _requiresRegistrationText,
+                requiresFile: _requiresRegistrationFile,
+                onRequiresTextChanged: (value) {
+                  setState(() => _requiresRegistrationText = value);
+                },
+                onRequiresFileChanged: (value) {
+                  setState(() => _requiresRegistrationFile = value);
+                },
+              ),
+              const SizedBox(height: 16),
               AdditionalPhotosGrid(
                 images: _additionalImages,
                 onAdd: _pickAdditional,
@@ -385,6 +494,207 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               const SizedBox(height: 40),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventFeeCard extends StatelessWidget {
+  final TextEditingController feeCtrl;
+  final String currency;
+  final ValueChanged<String?> onCurrencyChanged;
+
+  const _EventFeeCard({
+    required this.feeCtrl,
+    required this.currency,
+    required this.onCurrencyChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.payments_rounded,
+                      color: Color(0xFF14B8A6), size: 19),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Event Payment',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SizedBox(
+                  width: 92,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: currency,
+                    decoration: const InputDecoration(labelText: 'Currency'),
+                    items: const [
+                      DropdownMenuItem(value: 'RM', child: Text('RM')),
+                      DropdownMenuItem(value: 'USD', child: Text(r'$')),
+                    ],
+                    onChanged: onCurrencyChanged,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextFormField(
+                    controller: feeCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Amount',
+                      hintText: 'Leave empty if free',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'If an amount is set, students must upload a transfer receipt before registering.',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RegistrationOptionsCard extends StatelessWidget {
+  final TextEditingController capacityCtrl;
+  final TextEditingController externalFormCtrl;
+  final TextEditingController requirementPromptCtrl;
+  final bool requiresText;
+  final bool requiresFile;
+  final ValueChanged<bool> onRequiresTextChanged;
+  final ValueChanged<bool> onRequiresFileChanged;
+
+  const _RegistrationOptionsCard({
+    required this.capacityCtrl,
+    required this.externalFormCtrl,
+    required this.requirementPromptCtrl,
+    required this.requiresText,
+    required this.requiresFile,
+    required this.onRequiresTextChanged,
+    required this.onRequiresFileChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.fact_check_rounded,
+                      color: cs.primary, size: 19),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Registration Settings',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: capacityCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Max participants',
+                hintText: 'Leave empty for unlimited',
+                prefixIcon: Icon(Icons.groups_rounded),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: externalFormCtrl,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: 'External form link',
+                hintText: 'Optional Google Form link',
+                prefixIcon: Icon(Icons.link_rounded),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: requirementPromptCtrl,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Additional requirement',
+                hintText:
+                    'Optional: Tell students what answer or file you need, e.g. upload transfer receipt or write your team name.',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: requiresText,
+              onChanged: onRequiresTextChanged,
+              title: const Text(
+                'Require written answer',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              secondary: const Icon(Icons.notes_rounded),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: requiresFile,
+              onChanged: onRequiresFileChanged,
+              title: const Text(
+                'Require uploaded file',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              secondary: const Icon(Icons.upload_file_rounded),
+            ),
+            Text(
+              'If any requirement is enabled, registrations stay pending until the manager approves them.',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ],
         ),
       ),
     );

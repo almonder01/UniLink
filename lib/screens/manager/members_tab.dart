@@ -1,7 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/club.dart';
+import '../../providers/auth_provider.dart';
+import '../../screens/chat/direct_chat_screen.dart';
+import '../../services/club_membership_service.dart';
+import '../../services/direct_chat_service.dart';
 import '../../widgets/identity_avatar.dart';
+import 'membership_requests_screen.dart';
 
 class MembersTab extends StatefulWidget {
   final ClubModel club;
@@ -15,6 +21,8 @@ class MembersTab extends StatefulWidget {
 
 class MembersTabState extends State<MembersTab> {
   final _db = FirebaseFirestore.instance;
+  final _membershipService = ClubMembershipService();
+  final _directChatService = DirectChatService();
 
   List<Map<String, dynamic>> _members = [];
   bool _loadingMembers = false;
@@ -40,48 +48,10 @@ class MembersTabState extends State<MembersTab> {
   Future<void> _loadMembers() async {
     setState(() => _loadingMembers = true);
     try {
-      final followsSnap = await _db
-          .collection('user_follows')
-          .where('club_ids', arrayContains: widget.club.id)
-          .get();
-
-      if (followsSnap.docs.isEmpty) {
-        if (mounted) setState(() => _members = []);
-        _reportCount();
-        return;
-      }
-
-      final uids = followsSnap.docs.map((d) => d.id).toList();
-      final List<Map<String, dynamic>> members = [];
-
-      const chunkSize = 10;
-      for (var i = 0; i < uids.length; i += chunkSize) {
-        final chunk = uids.sublist(i, (i + chunkSize).clamp(0, uids.length));
-        final profilesSnap = await _db
-            .collection('profiles')
-            .where(FieldPath.documentId, whereIn: chunk)
-            .get();
-
-        for (final doc in profilesSnap.docs) {
-          final d = doc.data();
-          final isManager = doc.id == widget.club.managerId;
-          members.add({
-            'uid': doc.id,
-            'name': d['name'] as String? ?? 'Unknown',
-            'email': d['email'] as String? ?? '',
-            'photoBase64': d['photo_base64'] as String? ?? '',
-            'gender': d['gender'] as String? ?? 'male',
-            'role': isManager ? 'Manager' : 'Member',
-          });
-        }
-      }
-
-      members.sort((a, b) {
-        if (a['role'] == 'Manager') return -1;
-        if (b['role'] == 'Manager') return 1;
-        return (a['name'] as String).compareTo(b['name'] as String);
-      });
-
+      final members = await _membershipService.memberProfilesForClub(
+        widget.club,
+        publicOnly: false,
+      );
       if (mounted) setState(() => _members = members);
       _reportCount();
     } catch (e) {
@@ -172,6 +142,8 @@ class MembersTabState extends State<MembersTab> {
   }
 
   Future<void> _addMemberByEmail(String email) async {
+    final currentUserId =
+        context.read<AuthProvider>().currentUser?.id ?? widget.club.managerId ?? '';
     final profileSnap = await _db
         .collection('profiles')
         .where('email', isEqualTo: email)
@@ -189,11 +161,10 @@ class MembersTabState extends State<MembersTab> {
       throw Exception('This student is already a member.');
     }
 
-    await _db.collection('user_follows').doc(uid).set(
-      {
-        'club_ids': FieldValue.arrayUnion([widget.club.id])
-      },
-      SetOptions(merge: true),
+    await _membershipService.addMember(
+      club: widget.club,
+      profileDoc: profileDoc,
+      addedBy: currentUserId,
     );
 
     await _loadMembers();
@@ -229,12 +200,10 @@ class MembersTabState extends State<MembersTab> {
     if (confirm != true) return;
 
     try {
-      await _db
-          .collection('user_follows')
-          .doc(member['uid'] as String)
-          .update({
-        'club_ids': FieldValue.arrayRemove([widget.club.id]),
-      });
+      await _membershipService.removeMember(
+        clubId: widget.club.id,
+        userId: member['uid'] as String,
+      );
 
       await _loadMembers();
 
@@ -264,6 +233,37 @@ class MembersTabState extends State<MembersTab> {
     return colors[index % colors.length];
   }
 
+  Future<void> _openDirectChat(Map<String, dynamic> member) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null || member['uid'] == user.id) return;
+
+    try {
+      final chatId = await _directChatService.startChat(
+        currentUser: user,
+        target: member,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DirectChatScreen(
+            chatId: chatId,
+            title: member['name'] as String? ?? 'Chat',
+            user: user,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -273,59 +273,126 @@ class MembersTabState extends State<MembersTab> {
     }
 
     if (_members.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline,
-                size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 12),
-            Text('No members yet. Tap + to add one.',
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
-          ],
-        ),
+      return Column(
+        children: [
+          _MembersHeader(club: widget.club),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.people_outline,
+                      size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
+                  const SizedBox(height: 12),
+                  Text('No members yet. Tap + to add one.',
+                      style:
+                          TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadMembers,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _members.length,
-        itemBuilder: (_, i) {
-          final m = _members[i];
-          final isManager = m['role'] == 'Manager';
-          return ListTile(
-            leading: UserAvatar(
-              photoBase64: m['photoBase64'] as String?,
-              gender: m['gender'] as String?,
-              radius: 20,
-              backgroundColor: _avatarColor(m['name'] as String, i),
-            ),
-            title: Text(m['name'] as String,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(m['email'] as String),
-            trailing: isManager
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text('You',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700)),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.person_remove_outlined,
-                        color: Colors.red, size: 20),
-                    onPressed: () => _removeMember(m),
+    return Column(
+      children: [
+        _MembersHeader(club: widget.club),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadMembers,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: _members.length,
+              itemBuilder: (_, i) {
+                final m = _members[i];
+                final isManager = m['role'] == 'Manager';
+                final currentUserId = context.read<AuthProvider>().currentUser?.id;
+                return ListTile(
+                  leading: UserAvatar(
+                    photoBase64: m['photoBase64'] as String?,
+                    gender: m['gender'] as String?,
+                    radius: 20,
+                    backgroundColor: _avatarColor(m['name'] as String, i),
                   ),
-          );
-        },
+                  title: Text(m['name'] as String,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(m['email'] as String),
+                  trailing: isManager
+                      ? Container(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text('You',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700)),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (m['uid'] != currentUserId)
+                              IconButton(
+                                tooltip: 'Message',
+                                icon: const Icon(Icons.chat_bubble_outline_rounded,
+                                    size: 20),
+                                onPressed: () => _openDirectChat(m),
+                              ),
+                            IconButton(
+                              tooltip: 'Remove member',
+                              icon: const Icon(Icons.person_remove_outlined,
+                                  color: Colors.red, size: 20),
+                              onPressed: () => _removeMember(m),
+                            ),
+                          ],
+                        ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MembersHeader extends StatelessWidget {
+  final ClubModel club;
+
+  const _MembersHeader({required this.club});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Members',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: cs.onSurface,
+              ),
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Membership requests',
+            icon: const Icon(Icons.how_to_reg_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MembershipRequestsScreen(club: club),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

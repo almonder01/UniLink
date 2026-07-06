@@ -7,12 +7,16 @@ class ThemeProvider extends ChangeNotifier {
   bool _notifyEvents = true;
   bool _notifyReminders = true;
   bool _notifyClubUpdates = true;
+  String _postFeedPriority = 'member_first';
+  String _eventFeedPriority = 'member_first';
 
   ThemeMode get themeMode => _themeMode;
   bool get notifyPosts => _notifyPosts;
   bool get notifyEvents => _notifyEvents;
   bool get notifyReminders => _notifyReminders;
   bool get notifyClubUpdates => _notifyClubUpdates;
+  String get postFeedPriority => _postFeedPriority;
+  String get eventFeedPriority => _eventFeedPriority;
 
   ThemeProvider() {
     _load();
@@ -25,6 +29,10 @@ class ThemeProvider extends ChangeNotifier {
     _notifyEvents = prefs.getBool('notify_events') ?? true;
     _notifyReminders = prefs.getBool('notify_reminders') ?? true;
     _notifyClubUpdates = prefs.getBool('notify_clubs') ?? true;
+    _postFeedPriority =
+        prefs.getString('post_feed_priority') ?? 'member_first';
+    _eventFeedPriority =
+        prefs.getString('event_feed_priority') ?? 'member_first';
     notifyListeners();
   }
 
@@ -60,6 +68,20 @@ class ThemeProvider extends ChangeNotifier {
     _notifyClubUpdates = val;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notify_clubs', val);
+    notifyListeners();
+  }
+
+  Future<void> setPostFeedPriority(String value) async {
+    _postFeedPriority = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('post_feed_priority', value);
+    notifyListeners();
+  }
+
+  Future<void> setEventFeedPriority(String value) async {
+    _eventFeedPriority = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('event_feed_priority', value);
     notifyListeners();
   }
 

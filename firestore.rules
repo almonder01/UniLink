@@ -1,0 +1,176 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath(uid) {
+      return /databases/$(database)/documents/profiles/$(uid);
+    }
+
+    function hasProfile(uid) {
+      return exists(profilePath(uid));
+    }
+
+    function profile(uid) {
+      return get(profilePath(uid));
+    }
+
+    function role() {
+      return signedIn() && hasProfile(request.auth.uid)
+        ? profile(request.auth.uid).data.role
+        : null;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function clubPath(clubId) {
+      return /databases/$(database)/documents/clubs/$(clubId);
+    }
+
+    function hasClub(clubId) {
+      return exists(clubPath(clubId));
+    }
+
+    function clubDoc(clubId) {
+      return get(clubPath(clubId));
+    }
+
+    function isClubManager(clubId) {
+      return signedIn()
+        && hasClub(clubId)
+        && clubDoc(clubId).data.manager_id == request.auth.uid;
+    }
+
+    function participantOfChat(chatId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/direct_chats/$(chatId))
+          .data.participant_ids
+          .hasAny([request.auth.uid]);
+    }
+
+    match /profiles/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /clubs/{clubId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isClubManager(clubId);
+    }
+
+    match /user_follows/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /user_saved_posts/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isClubManager(request.resource.data.clubId);
+      allow delete: if signedIn() && (isAdmin() || isClubManager(resource.data.clubId));
+      allow update: if signedIn();
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if signedIn()
+          && (resource.data.userId == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isClubManager(request.resource.data.clubId);
+      allow update, delete: if signedIn()
+        && (isAdmin() || isClubManager(resource.data.clubId));
+    }
+
+    match /event_registrations/{registrationId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if signedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || isAdmin()
+          || isClubManager(resource.data.clubId)
+        );
+      allow delete: if signedIn()
+        && (isAdmin() || isClubManager(resource.data.clubId));
+    }
+
+    match /club_memberships/{membershipId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (isAdmin() || isClubManager(request.resource.data.club_id));
+      allow update, delete: if signedIn()
+        && (isAdmin() || isClubManager(resource.data.club_id));
+    }
+
+    match /club_rooms/{roomId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin() || isClubManager(resource.data.club_id);
+
+      match /messages/{messageId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.sender_id == request.auth.uid;
+        allow update, delete: if signedIn()
+          && (resource.data.sender_id == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /direct_chats/{chatId} {
+      allow read: if signedIn()
+        && resource.data.participant_ids.hasAny([request.auth.uid]);
+      allow create: if signedIn()
+        && request.resource.data.participant_ids.hasAny([request.auth.uid]);
+      allow update: if signedIn()
+        && resource.data.participant_ids.hasAny([request.auth.uid]);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if participantOfChat(chatId);
+        allow create: if participantOfChat(chatId)
+          && request.resource.data.sender_id == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{uid}/items/{notificationId} {
+      allow read, update, delete: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn();
+    }
+
+    match /club_payment_requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (isAdmin() || isClubManager(request.resource.data.club_id));
+      allow update, delete: if signedIn()
+        && (isAdmin() || isClubManager(resource.data.club_id));
+    }
+
+    match /club_payment_receipts/{receiptId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isAdmin() || isClubManager(resource.data.club_id);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
