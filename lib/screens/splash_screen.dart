@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/unilink_logo.dart';
+import 'splash/splash_logo_mark.dart';
+import 'splash/splash_progress_line.dart';
+import 'splash/splash_signal_bars.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 2400));
+    await Future.delayed(const Duration(milliseconds: 3400));
     if (!mounted || _navigated) return;
     final auth = context.read<AuthProvider>();
     await auth.checkAuthState();
@@ -51,80 +53,115 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF9333EA)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Decorative circles
-            Positioned(
-              top: -60,
-              right: -60,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -80,
-              left: -40,
-              child: Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const UnilinkLogo(size: LogoSize.large, color: Colors.white)
-                      .animate()
-                      .fade(duration: 700.ms)
-                      .scale(
-                        begin: const Offset(0.6, 0.6),
-                        duration: 700.ms,
-                        curve: Curves.easeOutBack,
-                      ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Connect. Discover. Belong.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  )
-                      .animate()
-                      .fade(delay: 500.ms, duration: 600.ms)
-                      .slideY(begin: 0.3, delay: 500.ms, duration: 600.ms),
-                  const SizedBox(height: 60),
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                  ).animate().fade(delay: 1200.ms, duration: 400.ms),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final height = constraints.maxHeight;
+          final shortestSide = width < height ? width : height;
+          final horizontalPadding = (width * 0.08).clamp(20.0, 34.0);
+          final contentWidth =
+              (width - (horizontalPadding * 2)).clamp(240.0, 340.0);
+          final logoSize = (shortestSide * 0.34).clamp(92.0, 132.0);
+          final titleSize = (shortestSide * 0.09).clamp(27.0, 34.0);
+          final subtitleSize = (shortestSide * 0.04).clamp(13.0, 15.0);
+          final topGap = (height * 0.035).clamp(16.0, 24.0);
+          final actionGap = (height * 0.048).clamp(22.0, 34.0);
+
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF4F46E5),
+                  Color(0xFF7C3AED),
+                  Color(0xFF9333EA),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-          ],
-        ),
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding.toDouble(),
+                    vertical: 18,
+                  ),
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: contentWidth.toDouble(),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SplashLogoMark(size: logoSize.toDouble())
+                            .animate()
+                            .fade(duration: 650.ms)
+                            .scale(
+                              begin: const Offset(0.76, 0.76),
+                              duration: 750.ms,
+                              curve: Curves.easeOutBack,
+                            ),
+                        SizedBox(height: topGap.toDouble()),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'UniLink',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.96),
+                              fontSize: titleSize.toDouble(),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        )
+                            .animate()
+                            .fade(delay: 300.ms, duration: 450.ms)
+                            .slideY(
+                              begin: 0.18,
+                              delay: 300.ms,
+                              duration: 450.ms,
+                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Connect. Discover. Belong.',
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            fontSize: subtitleSize.toDouble(),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                            .animate()
+                            .fade(delay: 520.ms, duration: 500.ms)
+                            .slideY(
+                              begin: 0.16,
+                              delay: 520.ms,
+                              duration: 500.ms,
+                            ),
+                        SizedBox(height: actionGap.toDouble()),
+                        SplashSignalBars(scale: (logoSize / 132).toDouble())
+                            .animate()
+                            .fade(delay: 850.ms, duration: 350.ms),
+                        SizedBox(
+                          height: (height * 0.025)
+                              .clamp(12.0, 18.0)
+                              .toDouble(),
+                        ),
+                        SplashProgressLine(
+                          width: (contentWidth * 0.56).clamp(132.0, 168.0),
+                        )
+                            .animate()
+                            .fade(delay: 1050.ms, duration: 350.ms),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

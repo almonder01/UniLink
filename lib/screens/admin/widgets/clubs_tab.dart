@@ -10,6 +10,7 @@ class ClubsTab extends StatelessWidget {
   final VoidCallback onDismissBanner;
   final VoidCallback onCreateClub;
   final void Function(Map<String, dynamic>) onAssign;
+  final void Function(Map<String, dynamic>) onEdit;
   final Future<void> Function(Map<String, dynamic>) onUnassign;
   final Future<void> Function(Map<String, dynamic>) onDelete;
 
@@ -21,6 +22,7 @@ class ClubsTab extends StatelessWidget {
     required this.onDismissBanner,
     required this.onCreateClub,
     required this.onAssign,
+    required this.onEdit,
     required this.onUnassign,
     required this.onDelete,
   });
@@ -200,6 +202,7 @@ class ClubsTab extends StatelessWidget {
               ...clubs.map(
                 (club) => ClubTile(
                   club: club,
+                  onEdit: () => onEdit(club),
                   onAssign: () => onAssign(club),
                   onUnassign: () => onUnassign(club),
                   onDelete: () => onDelete(club),

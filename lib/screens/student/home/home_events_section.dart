@@ -3,6 +3,7 @@ part of '../home_screen.dart';
 class _HomeEventsSection extends StatelessWidget {
   final List<EventModel> events;
   final bool hasMore;
+  final bool isLoadingMore;
   final double cardWidth;
   final double carouselHeight;
   final VoidCallback onLoadMore;
@@ -14,6 +15,7 @@ class _HomeEventsSection extends StatelessWidget {
   const _HomeEventsSection({
     required this.events,
     required this.hasMore,
+    required this.isLoadingMore,
     required this.cardWidth,
     required this.carouselHeight,
     required this.onLoadMore,
@@ -46,6 +48,7 @@ class _HomeEventsSection extends StatelessWidget {
               if (index == events.length) {
                 return _LoadMoreEventCard(
                   width: cardWidth,
+                  isLoading: isLoadingMore,
                   onTap: onLoadMore,
                 );
               }

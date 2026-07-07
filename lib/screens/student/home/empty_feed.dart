@@ -4,10 +4,12 @@ class _EmptyFeed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
+    return SizedBox(
+      width: double.infinity,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          const SizedBox(height: 60),
           Icon(Icons.dynamic_feed_rounded,
               size: 64, color: cs.onSurface.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
@@ -25,6 +27,7 @@ class _EmptyFeed extends StatelessWidget {
             style: TextStyle(
                 fontSize: 14, color: cs.onSurface.withValues(alpha: 0.4)),
           ),
+          const SizedBox(height: 60),
         ],
       ),
     );

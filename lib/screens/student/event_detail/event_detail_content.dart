@@ -140,6 +140,47 @@ class _EventDetailContent extends StatelessWidget {
                 color: cs.onSurface.withValues(alpha: 0.75),
               ),
             ),
+            if (event.hasVideo) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Video',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              if (event.hasYoutubeVideo) ...[
+                YouTubeVideoPreview(
+                  url: event.youtubeUrl!.trim(),
+                  title: event.title,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (event.hasDirectVideo)
+                VideoMediaPreview(
+                  url: event.videoUrl!.trim(),
+                  type: event.videoType,
+                  title: event.title,
+                ),
+            ],
+            if (event.hasAudio) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Music',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              if (event.audioType == 'youtube')
+                YouTubeVideoPreview(
+                  url: event.audioUrl!.trim(),
+                  title: '${event.title} music',
+                  compact: true,
+                )
+              else
+                ClubAudioPlayer(
+                  url: event.audioUrl!.trim(),
+                  title: '${event.title} music',
+                  autoPlay: false,
+                ),
+            ],
             if (event.hasRegistrationRequirement) ...[
               const SizedBox(height: 20),
               const Text(

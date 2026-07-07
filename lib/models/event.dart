@@ -13,6 +13,11 @@ class EventModel {
   final String coverColor;
   final String? coverImageBase64;
   final List<String> photoBase64List;
+  final String? youtubeUrl;
+  final String? videoUrl;
+  final String videoType;
+  final String? audioUrl;
+  final String audioType;
   final DateTime eventDate;
   final double? feeAmount;
   final String feeCurrency;
@@ -41,6 +46,11 @@ class EventModel {
     required this.coverColor,
     this.coverImageBase64,
     this.photoBase64List = const [],
+    this.youtubeUrl,
+    this.videoUrl,
+    this.videoType = 'video',
+    this.audioUrl,
+    this.audioType = 'audio',
     required this.eventDate,
     this.feeAmount,
     this.feeCurrency = 'RM',
@@ -61,6 +71,10 @@ class EventModel {
   bool get hasCapacityLimit => maxParticipants != null && maxParticipants! > 0;
   bool get isFull => hasCapacityLimit && registeredCount >= maxParticipants!;
   bool get hasExternalForm => (externalFormUrl ?? '').trim().isNotEmpty;
+  bool get hasYoutubeVideo => (youtubeUrl ?? '').trim().isNotEmpty;
+  bool get hasDirectVideo => (videoUrl ?? '').trim().isNotEmpty;
+  bool get hasVideo => hasYoutubeVideo || hasDirectVideo;
+  bool get hasAudio => (audioUrl ?? '').trim().isNotEmpty;
   bool get hasRegistrationRequirement =>
       requiresRegistrationText || requiresRegistrationFile;
   int? get remainingSlots {
@@ -92,6 +106,11 @@ class EventModel {
         'coverColor': coverColor,
         if (coverImageBase64 != null) 'coverImageBase64': coverImageBase64,
         'photoBase64List': photoBase64List,
+        'youtubeUrl': youtubeUrl?.trim() ?? '',
+        'videoUrl': videoUrl?.trim() ?? '',
+        'videoType': videoType,
+        'audioUrl': audioUrl?.trim() ?? '',
+        'audioType': audioType,
         'eventDate': eventDate.toIso8601String(),
         'feeAmount': feeAmount,
         'feeCurrency': feeCurrency,
@@ -120,6 +139,11 @@ class EventModel {
         coverColor: map['coverColor'] as String? ?? 'FF6366F1',
         coverImageBase64: map['coverImageBase64'] as String?,
         photoBase64List: List<String>.from(map['photoBase64List'] ?? const []),
+        youtubeUrl: map['youtubeUrl'] as String?,
+        videoUrl: map['videoUrl'] as String?,
+        videoType: map['videoType'] as String? ?? 'video',
+        audioUrl: map['audioUrl'] as String?,
+        audioType: map['audioType'] as String? ?? 'audio',
         eventDate: DateTime.parse(map['eventDate'] as String),
         feeAmount: (map['feeAmount'] as num?)?.toDouble(),
         feeCurrency: map['feeCurrency'] as String? ?? 'RM',
@@ -144,6 +168,11 @@ class EventModel {
     String? coverColor,
     String? coverImageBase64,
     List<String>? photoBase64List,
+    String? youtubeUrl,
+    String? videoUrl,
+    String? videoType,
+    String? audioUrl,
+    String? audioType,
     DateTime? eventDate,
     double? feeAmount,
     String? feeCurrency,
@@ -172,6 +201,11 @@ class EventModel {
         coverColor: coverColor ?? this.coverColor,
         coverImageBase64: coverImageBase64 ?? this.coverImageBase64,
         photoBase64List: photoBase64List ?? this.photoBase64List,
+        youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+        videoUrl: videoUrl ?? this.videoUrl,
+        videoType: videoType ?? this.videoType,
+        audioUrl: audioUrl ?? this.audioUrl,
+        audioType: audioType ?? this.audioType,
         eventDate: eventDate ?? this.eventDate,
         feeAmount: feeAmount ?? this.feeAmount,
         feeCurrency: feeCurrency ?? this.feeCurrency,

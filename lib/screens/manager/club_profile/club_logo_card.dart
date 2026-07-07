@@ -86,24 +86,21 @@ class _ClubLogoCard extends StatelessWidget {
                 'Show logo background',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
-              subtitle: const Text('Controls the colored shape behind the logo'),
               contentPadding: EdgeInsets.zero,
             ),
-            if (showLogoBackground) ...[
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final colorHex in logoColors)
-                    _LogoColorDot(
-                      color: Color(int.parse(colorHex, radix: 16)),
-                      selected: selectedLogoColor == colorHex,
-                      onTap: () => onLogoColorChanged(colorHex),
-                    ),
-                ],
-              ),
-            ],
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final colorHex in logoColors)
+                  _LogoColorDot(
+                    color: Color(int.parse(colorHex, radix: 16)),
+                    selected: selectedLogoColor == colorHex,
+                    onTap: () => onLogoColorChanged(colorHex),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

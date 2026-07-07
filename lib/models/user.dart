@@ -18,6 +18,7 @@ class UserModel {
   final bool notifyChatFromMembers;
   final bool notifyChatFromManagers;
   final bool notifyChatFromEveryone;
+  final bool showClubBackgroundMedia;
 
   const UserModel({
     required this.id,
@@ -39,6 +40,7 @@ class UserModel {
     this.notifyChatFromMembers = true,
     this.notifyChatFromManagers = true,
     this.notifyChatFromEveryone = true,
+    this.showClubBackgroundMedia = true,
   });
 
   static UserModel fromMap(Map<String, dynamic> m) => UserModel(
@@ -64,6 +66,8 @@ class UserModel {
             m['notify_chat_from_managers'] as bool? ?? true,
         notifyChatFromEveryone:
             m['notify_chat_from_everyone'] as bool? ?? true,
+        showClubBackgroundMedia:
+            m['show_club_background_media'] as bool? ?? true,
       );
 
   Map<String, dynamic> toMap() => {
@@ -85,6 +89,7 @@ class UserModel {
         'notify_chat_from_members': notifyChatFromMembers,
         'notify_chat_from_managers': notifyChatFromManagers,
         'notify_chat_from_everyone': notifyChatFromEveryone,
+        'show_club_background_media': showClubBackgroundMedia,
         if (managedClubId != null) 'managed_club_id': managedClubId,
       };
 
@@ -103,6 +108,7 @@ class UserModel {
     bool? notifyChatFromMembers,
     bool? notifyChatFromManagers,
     bool? notifyChatFromEveryone,
+    bool? showClubBackgroundMedia,
   }) {
     return UserModel(
       id: id,
@@ -128,6 +134,8 @@ class UserModel {
           notifyChatFromManagers ?? this.notifyChatFromManagers,
       notifyChatFromEveryone:
           notifyChatFromEveryone ?? this.notifyChatFromEveryone,
+      showClubBackgroundMedia:
+          showClubBackgroundMedia ?? this.showClubBackgroundMedia,
     );
   }
 }

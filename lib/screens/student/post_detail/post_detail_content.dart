@@ -55,6 +55,48 @@ class _PostDetailContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          if ((post.youtubeUrl ?? '').trim().isNotEmpty ||
+              (post.videoUrl ?? '').trim().isNotEmpty) ...[
+            const Text(
+              'Video',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            if ((post.youtubeUrl ?? '').trim().isNotEmpty) ...[
+              YouTubeVideoPreview(
+                url: post.youtubeUrl!.trim(),
+                title: post.title,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if ((post.videoUrl ?? '').trim().isNotEmpty)
+              VideoMediaPreview(
+                url: post.videoUrl!.trim(),
+                type: post.videoType,
+                title: post.title,
+              ),
+            const SizedBox(height: 24),
+          ],
+          if ((post.audioUrl ?? '').trim().isNotEmpty) ...[
+            const Text(
+              'Music',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            if (post.audioType == 'youtube')
+              YouTubeVideoPreview(
+                url: post.audioUrl!.trim(),
+                title: '${post.title} music',
+                compact: true,
+              )
+            else
+              ClubAudioPlayer(
+                url: post.audioUrl!.trim(),
+                title: '${post.title} music',
+                autoPlay: false,
+              ),
+            const SizedBox(height: 24),
+          ],
           const Text(
             'Photos',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),

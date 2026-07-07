@@ -3,6 +3,8 @@ part of '../home_screen.dart';
 class _HomePostsSection extends StatelessWidget {
   final List<PostModel> posts;
   final bool hasMore;
+  final bool isLoadingMore;
+  final bool isInitialLoading;
   final bool hasAnyClubContext;
   final String userId;
   final Set<String> savedPostIds;
@@ -17,6 +19,8 @@ class _HomePostsSection extends StatelessWidget {
   const _HomePostsSection({
     required this.posts,
     required this.hasMore,
+    required this.isLoadingMore,
+    required this.isInitialLoading,
     required this.hasAnyClubContext,
     required this.userId,
     required this.savedPostIds,
@@ -40,7 +44,12 @@ class _HomePostsSection extends StatelessWidget {
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
-        if (posts.isEmpty)
+        if (posts.isEmpty && isInitialLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (posts.isEmpty)
           _EmptyFeed()
         else ...[
           ...posts.map(
@@ -62,9 +71,15 @@ class _HomePostsSection extends StatelessWidget {
           if (hasMore)
             Center(
               child: OutlinedButton.icon(
-                onPressed: onLoadMore,
-                icon: const Icon(Icons.expand_more_rounded),
-                label: const Text('Load more posts'),
+                onPressed: isLoadingMore ? null : onLoadMore,
+                icon: isLoadingMore
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.expand_more_rounded),
+                label: Text(isLoadingMore ? 'Loading...' : 'Load more posts'),
               ),
             ),
         ],

@@ -75,6 +75,40 @@ class _PrivacyCard extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           ),
           const Divider(height: 1, indent: 56),
+          SwitchListTile(
+            secondary: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF97316).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.ondemand_video_rounded,
+                color: Color(0xFFF97316),
+                size: 18,
+              ),
+            ),
+            title: const Text(
+              'Autoplay club background media',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Allow club pages to start music or open featured media automatically',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+            value: user?.showClubBackgroundMedia ?? true,
+            onChanged: user == null
+                ? null
+                : (value) =>
+                    auth.updateProfile(showClubBackgroundMedia: value),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          ),
+          const Divider(height: 1, indent: 56),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(

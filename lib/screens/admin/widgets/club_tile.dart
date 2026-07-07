@@ -3,6 +3,7 @@ import '../../../widgets/identity_avatar.dart';
 
 class ClubTile extends StatelessWidget {
   final Map<String, dynamic> club;
+  final VoidCallback onEdit;
   final VoidCallback onAssign;
   final VoidCallback onUnassign;
   final VoidCallback onDelete;
@@ -10,6 +11,7 @@ class ClubTile extends StatelessWidget {
   const ClubTile({
     super.key,
     required this.club,
+    required this.onEdit,
     required this.onAssign,
     required this.onUnassign,
     required this.onDelete,
@@ -82,32 +84,38 @@ class ClubTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Category chip
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: logoColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    (club['category'] as String?) ?? 'General',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: logoColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                IconButton.filledTonal(
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  onPressed: onEdit,
+                  tooltip: 'Edit club',
                 ),
                 const SizedBox(width: 4),
-                // Delete
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      size: 18, color: Colors.red),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: Colors.red,
+                  ),
                   onPressed: onDelete,
                   tooltip: 'Delete club',
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: logoColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                (club['category'] as String?) ?? 'General',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: logoColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             // Action buttons

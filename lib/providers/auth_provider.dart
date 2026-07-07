@@ -62,6 +62,7 @@ class AuthProvider extends ChangeNotifier {
         'notify_chat_from_members': true,
         'notify_chat_from_managers': true,
         'notify_chat_from_everyone': true,
+        'show_club_background_media': true,
       }).catchError((_) {});
       ClubService().seedIfEmpty().catchError((_) {});
       return role;
@@ -130,6 +131,7 @@ class AuthProvider extends ChangeNotifier {
     bool? notifyChatFromMembers,
     bool? notifyChatFromManagers,
     bool? notifyChatFromEveryone,
+    bool? showClubBackgroundMedia,
   }) async {
     if (_currentUser == null) return;
     final updates = <String, dynamic>{};
@@ -162,6 +164,9 @@ class AuthProvider extends ChangeNotifier {
     if (notifyChatFromEveryone != null) {
       updates['notify_chat_from_everyone'] = notifyChatFromEveryone;
     }
+    if (showClubBackgroundMedia != null) {
+      updates['show_club_background_media'] = showClubBackgroundMedia;
+    }
     if (updates.isEmpty) return;
     await _db.collection('profiles').doc(_currentUser!.id).update(updates);
     _currentUser = _currentUser!.copyWith(
@@ -178,6 +183,7 @@ class AuthProvider extends ChangeNotifier {
       notifyChatFromMembers: notifyChatFromMembers,
       notifyChatFromManagers: notifyChatFromManagers,
       notifyChatFromEveryone: notifyChatFromEveryone,
+      showClubBackgroundMedia: showClubBackgroundMedia,
     );
     notifyListeners();
   }
