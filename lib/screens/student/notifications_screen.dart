@@ -10,9 +10,11 @@ import '../../providers/notification_provider.dart';
 import '../../screens/chat/direct_chat_screen.dart';
 import '../../screens/chat/club_room_chat_screen.dart';
 import '../../services/club_payment_service.dart';
+import '../../services/club_detail_edit_request_service.dart';
 import '../../services/club_room_service.dart';
 import '../../services/database_service.dart';
 import '../../services/event_service.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import 'event_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'post_detail_screen.dart';
@@ -36,6 +38,10 @@ class NotificationsScreen extends StatelessWidget {
         return Icons.payments_rounded;
       case 'direct_message':
         return Icons.mark_chat_unread_rounded;
+      case 'club_detail_edit_request':
+        return Icons.edit_note_rounded;
+      case 'club_detail_edit_permission':
+        return Icons.lock_open_rounded;
       case 'event_invite':
       case 'event_registration':
         return Icons.event_available_rounded;
@@ -101,7 +107,8 @@ class NotificationsScreen extends StatelessWidget {
 
   bool _opensDirectMessage(String type) => type == 'direct_message';
 
-  bool _opensClub(String type) => type == 'club';
+  bool _opensClub(String type) =>
+      type == 'club' || type == 'club_detail_edit_permission';
 
   Future<void> _openEvent(
     BuildContext context,
@@ -231,6 +238,54 @@ class NotificationsScreen extends StatelessWidget {
     return () => provider.markRead(notification.id);
   }
 
+  Future<void> _grantClubDetailEditAccess(
+    BuildContext context,
+    NotificationProvider provider,
+    NotificationModel notif,
+  ) async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null || user.role != 'admin' || notif.refId == null) return;
+
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Grant edit access?',
+      message: 'Allow this club manager to edit the club name and description '
+          'for ${ClubDetailEditRequestService.defaultGrantMinutes} minutes?',
+      confirmLabel: 'Grant',
+      icon: Icons.lock_open_rounded,
+    );
+    if (!confirmed) return;
+
+    try {
+      final expiresAt = await ClubDetailEditRequestService().grantEditAccess(
+        requestId: notif.refId!,
+        adminId: user.id,
+      );
+      await provider.markMatchingActionsCompleted(
+        type: notif.type,
+        refId: notif.refId!,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Temporary edit access granted until '
+            '${TimeOfDay.fromDateTime(expiresAt).format(context)}.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not grant access: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   VoidCallback? _joinRoomFor(
     BuildContext context,
     NotificationProvider provider,
@@ -249,6 +304,20 @@ class NotificationsScreen extends StatelessWidget {
       return null;
     }
     return () => _uploadPaymentReceipt(context, provider, notification);
+  }
+
+  VoidCallback? _grantClubDetailEditAccessFor(
+    BuildContext context,
+    NotificationProvider provider,
+    NotificationModel notification,
+  ) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (notification.type != 'club_detail_edit_request' ||
+        notification.actionCompleted ||
+        user?.role != 'admin') {
+      return null;
+    }
+    return () => _grantClubDetailEditAccess(context, provider, notification);
   }
 
   @override
@@ -300,6 +369,8 @@ class NotificationsScreen extends StatelessWidget {
                   onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
                   onUploadReceiptFor: (n) =>
                       _uploadReceiptFor(context, provider, n),
+                  onGrantEditAccessFor: (n) =>
+                      _grantClubDetailEditAccessFor(context, provider, n),
                 ),
                 _NotificationSection(
                   label: 'Yesterday',
@@ -310,6 +381,8 @@ class NotificationsScreen extends StatelessWidget {
                   onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
                   onUploadReceiptFor: (n) =>
                       _uploadReceiptFor(context, provider, n),
+                  onGrantEditAccessFor: (n) =>
+                      _grantClubDetailEditAccessFor(context, provider, n),
                 ),
                 _NotificationSection(
                   label: 'Earlier',
@@ -320,6 +393,8 @@ class NotificationsScreen extends StatelessWidget {
                   onJoinRoomFor: (n) => _joinRoomFor(context, provider, n),
                   onUploadReceiptFor: (n) =>
                       _uploadReceiptFor(context, provider, n),
+                  onGrantEditAccessFor: (n) =>
+                      _grantClubDetailEditAccessFor(context, provider, n),
                 ),
               ],
             ),

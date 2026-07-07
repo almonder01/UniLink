@@ -9,7 +9,6 @@ class _AudioField extends StatelessWidget {
   final bool compactPreview;
 
   const _AudioField({
-    super.key,
     required this.controller,
     required this.audioType,
     required this.pendingName,

@@ -60,27 +60,15 @@ class _RoomEditorSheetState extends State<_RoomEditorSheet> {
   }
 
   Future<void> _deleteRoom() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete room?'),
-        content: Text(
-          'Delete ${widget.room.name}? Messages will no longer be shown.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Delete room?',
+      message: 'Delete ${widget.room.name}? Messages will no longer be shown.',
+      confirmLabel: 'Delete',
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ClubRoomService().deleteRoom(widget.room);
     if (!mounted) return;
     Navigator.of(context).pop();

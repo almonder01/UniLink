@@ -35,6 +35,9 @@ class MediaAttachmentFields extends StatelessWidget {
   final bool compactPreviews;
   final bool showVideo;
   final bool showAudio;
+  final bool collapsibleSections;
+  final bool videoInitiallyExpanded;
+  final bool audioInitiallyExpanded;
   final List<MediaAsset> videoAssets;
   final List<MediaAsset> audioAssets;
   final String? selectedVideoUrl;
@@ -65,6 +68,9 @@ class MediaAttachmentFields extends StatelessWidget {
     this.compactPreviews = false,
     this.showVideo = true,
     this.showAudio = true,
+    this.collapsibleSections = true,
+    this.videoInitiallyExpanded = true,
+    this.audioInitiallyExpanded = false,
     this.videoAssets = const [],
     this.audioAssets = const [],
     this.selectedVideoUrl,
@@ -98,9 +104,26 @@ class MediaAttachmentFields extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildVideoSection() => [
+  List<Widget> _buildVideoSection() {
+    final content = _buildVideoContent();
+    if (!collapsibleSections) return content;
+
+    return [
+      _MediaAttachmentExpansion(
+        icon: Icons.ondemand_video_rounded,
+        title: 'Video',
+        subtitle: videoType == 'youtube'
+            ? 'YouTube link, saved video, or upload'
+            : 'Uploaded file, direct link, or saved video',
+        initiallyExpanded: videoInitiallyExpanded,
+        children: content,
+      ),
+    ];
+  }
+
+  List<Widget> _buildVideoContent() => [
         _MediaSourceSelector(
-          title: 'Video',
+          title: collapsibleSections ? 'Source' : 'Video',
           icon: Icons.ondemand_video_rounded,
           value: videoType,
           segments: const [
@@ -118,24 +141,20 @@ class MediaAttachmentFields extends StatelessWidget {
           onChanged: onVideoTypeChanged,
         ),
         const SizedBox(height: 12),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: videoType == 'youtube'
-              ? _YouTubeVideoField(
-                  key: const ValueKey('youtube-video-field'),
-                  controller: youtubeVideoController,
-                  previewTitle: videoPreviewTitle,
-                  compactPreview: compactPreviews,
-                )
-              : _DirectVideoField(
-                  key: const ValueKey('direct-video-field'),
-                  controller: directVideoController,
-                  pendingName: pendingVideoName,
-                  onPick: onPickVideo,
-                  previewTitle: videoPreviewTitle,
-                  compactPreview: compactPreviews,
-                ),
-        ),
+        if (videoType == 'youtube')
+          _YouTubeVideoField(
+            controller: youtubeVideoController,
+            previewTitle: videoPreviewTitle,
+            compactPreview: compactPreviews,
+          )
+        else
+          _DirectVideoField(
+            controller: directVideoController,
+            pendingName: pendingVideoName,
+            onPick: onPickVideo,
+            previewTitle: videoPreviewTitle,
+            compactPreview: compactPreviews,
+          ),
         if (videoAssets.isNotEmpty) ...[
           const SizedBox(height: 12),
           _MediaAssetList(
@@ -148,9 +167,26 @@ class MediaAttachmentFields extends StatelessWidget {
         ...videoOptions,
       ];
 
-  List<Widget> _buildAudioSection() => [
+  List<Widget> _buildAudioSection() {
+    final content = _buildAudioContent();
+    if (!collapsibleSections) return content;
+
+    return [
+      _MediaAttachmentExpansion(
+        icon: Icons.music_note_rounded,
+        title: 'Music',
+        subtitle: audioType == 'youtube'
+            ? 'YouTube audio, saved music, or MP3'
+            : 'MP3 file, audio link, or saved music',
+        initiallyExpanded: audioInitiallyExpanded,
+        children: content,
+      ),
+    ];
+  }
+
+  List<Widget> _buildAudioContent() => [
         _MediaSourceSelector(
-          title: 'Music',
+          title: collapsibleSections ? 'Source' : 'Music',
           icon: Icons.music_note_rounded,
           value: audioType,
           segments: const [
@@ -168,17 +204,13 @@ class MediaAttachmentFields extends StatelessWidget {
           onChanged: onAudioTypeChanged,
         ),
         const SizedBox(height: 12),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: _AudioField(
-            key: ValueKey('audio-$audioType'),
-            controller: audioController,
-            audioType: audioType,
-            pendingName: pendingAudioName,
-            onPick: onPickAudio,
-            previewTitle: audioPreviewTitle,
-            compactPreview: compactPreviews,
-          ),
+        _AudioField(
+          controller: audioController,
+          audioType: audioType,
+          pendingName: pendingAudioName,
+          onPick: onPickAudio,
+          previewTitle: audioPreviewTitle,
+          compactPreview: compactPreviews,
         ),
         if (audioAssets.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -191,4 +223,56 @@ class MediaAttachmentFields extends StatelessWidget {
         ],
         ...audioOptions,
       ];
+}
+
+class _MediaAttachmentExpansion extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool initiallyExpanded;
+  final List<Widget> children;
+
+  const _MediaAttachmentExpansion({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.initiallyExpanded,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.32),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.55),
+          ),
+        ),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          maintainState: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          leading: Icon(icon, color: cs.primary),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 11,
+              color: cs.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+          children: children,
+        ),
+      ),
+    );
+  }
 }

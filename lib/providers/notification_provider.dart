@@ -34,6 +34,23 @@ class NotificationProvider extends ChangeNotifier {
     await NotificationService().markRead(_userId!, notifId);
   }
 
+  Future<void> markActionCompleted(String notifId) async {
+    if (_userId == null) return;
+    await NotificationService().markActionCompleted(_userId!, notifId);
+  }
+
+  Future<void> markMatchingActionsCompleted({
+    required String type,
+    required String refId,
+  }) async {
+    if (_userId == null) return;
+    await NotificationService().markMatchingActionsCompleted(
+      userId: _userId!,
+      type: type,
+      refId: refId,
+    );
+  }
+
   @override
   void dispose() {
     _sub?.cancel();

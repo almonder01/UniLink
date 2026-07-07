@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../widgets/app_search_field.dart';
 import 'club_tile.dart';
 
 class ClubsTab extends StatelessWidget {
@@ -161,12 +162,9 @@ class ClubsTab extends StatelessWidget {
               ),
 
             // ── Search ───────────────────────────────────────────────────────
-            TextField(
+            AppSearchField(
               controller: searchCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Search clubs or managers...',
-                prefixIcon: Icon(Icons.search_rounded),
-              ),
+              hintText: 'Search clubs or managers...',
             ),
             const SizedBox(height: 12),
 

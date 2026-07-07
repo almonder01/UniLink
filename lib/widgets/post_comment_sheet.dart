@@ -4,6 +4,7 @@ import '../models/post.dart';
 import '../models/post_comment.dart';
 import '../models/user.dart';
 import '../services/post_interaction_service.dart';
+import 'confirm_action_dialog.dart';
 import 'identity_avatar.dart';
 
 class PostCommentSheet extends StatefulWidget {
@@ -207,25 +208,15 @@ class _CommentTile extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete comment?'),
-        content: const Text('This comment will be removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Delete comment?',
+      message: 'This comment will be removed.',
+      confirmLabel: 'Delete',
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await PostInteractionService().deleteComment(
       postId: comment.postId,
       commentId: comment.id,

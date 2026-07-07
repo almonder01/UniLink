@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../widgets/confirm_action_dialog.dart';
 import 'widgets/admin_club_form_dialog.dart';
 import 'widgets/clubs_tab.dart';
 import 'widgets/users_tab.dart';
@@ -191,28 +192,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Future<void> _unassignManager(Map<String, dynamic> club) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Unassign Manager',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text(
-            'Remove ${club['manager_name']} from managing "${club['name']}"?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Unassign'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Unassign Manager',
+      message: 'Remove ${club['manager_name']} from managing '
+          '"${club['name']}"?',
+      confirmLabel: 'Unassign',
+      icon: Icons.manage_accounts_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     final managerId = club['manager_id'] as String?;
     if (managerId != null && managerId.isNotEmpty) {
@@ -233,27 +222,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Future<void> _deleteClub(Map<String, dynamic> club) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Club',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text('Permanently delete "${club['name']}"?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Delete Club',
+      message: 'Permanently delete "${club['name']}"?',
+      confirmLabel: 'Delete',
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     await _db.collection('clubs').doc(club['id'] as String).delete();
     if (!mounted) return;
@@ -266,27 +243,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   // ── Users dialogs ──────────────────────────────────────────────────────────
 
   Future<void> _deleteUser(Map<String, dynamic> user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove User',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text('Remove ${user['name']} from UniLink?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Remove User',
+      message: 'Remove ${user['name']} from UniLink?',
+      confirmLabel: 'Remove',
+      icon: Icons.person_remove_alt_1_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     await _db.collection('profiles').doc(user['id'] as String).delete();
     if (!mounted) return;

@@ -8,6 +8,8 @@ class _NotificationSection extends StatelessWidget {
   final VoidCallback Function(NotificationModel notification) onTapFor;
   final VoidCallback? Function(NotificationModel notification) onJoinRoomFor;
   final VoidCallback? Function(NotificationModel notification) onUploadReceiptFor;
+  final VoidCallback? Function(NotificationModel notification)
+      onGrantEditAccessFor;
 
   const _NotificationSection({
     required this.label,
@@ -17,6 +19,7 @@ class _NotificationSection extends StatelessWidget {
     required this.onTapFor,
     required this.onJoinRoomFor,
     required this.onUploadReceiptFor,
+    required this.onGrantEditAccessFor,
   });
 
   @override
@@ -35,6 +38,7 @@ class _NotificationSection extends StatelessWidget {
             onTap: onTapFor(notification),
             onJoinRoom: onJoinRoomFor(notification),
             onUploadReceipt: onUploadReceiptFor(notification),
+            onGrantEditAccess: onGrantEditAccessFor(notification),
           ),
       ],
     );

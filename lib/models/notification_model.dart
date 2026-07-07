@@ -10,6 +10,7 @@ class NotificationModel {
   final String? refId;
   final DateTime time;
   final bool isRead;
+  final bool actionCompleted;
 
   const NotificationModel({
     required this.id,
@@ -21,6 +22,7 @@ class NotificationModel {
     this.refId,
     required this.time,
     required this.isRead,
+    this.actionCompleted = false,
   });
 
   factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
@@ -36,10 +38,15 @@ class NotificationModel {
       refId: d['ref_id'] as String?,
       time: ts is Timestamp ? ts.toDate() : DateTime.now(),
       isRead: d['is_read'] as bool? ?? false,
+      actionCompleted: d['action_completed'] as bool? ?? false,
     );
   }
 
-  NotificationModel copyWith({bool? isRead}) => NotificationModel(
+  NotificationModel copyWith({
+    bool? isRead,
+    bool? actionCompleted,
+  }) =>
+      NotificationModel(
         id: id,
         title: title,
         body: body,
@@ -49,5 +56,6 @@ class NotificationModel {
         refId: refId,
         time: time,
         isRead: isRead ?? this.isRead,
+        actionCompleted: actionCompleted ?? this.actionCompleted,
       );
 }

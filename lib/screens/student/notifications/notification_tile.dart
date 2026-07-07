@@ -28,6 +28,7 @@ class _NotifTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onJoinRoom;
   final VoidCallback? onUploadReceipt;
+  final VoidCallback? onGrantEditAccess;
 
   const _NotifTile({
     required this.notif,
@@ -36,6 +37,7 @@ class _NotifTile extends StatelessWidget {
     required this.onTap,
     this.onJoinRoom,
     this.onUploadReceipt,
+    this.onGrantEditAccess,
   });
 
   @override
@@ -89,20 +91,47 @@ class _NotifTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: onJoinRoom != null || onUploadReceipt != null
-            ? FilledButton.tonal(
-                onPressed: onJoinRoom ?? onUploadReceipt,
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+        trailing: onJoinRoom != null ||
+                onUploadReceipt != null ||
+                onGrantEditAccess != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!notif.isRead) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: cs.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  FilledButton.tonal(
+                    onPressed:
+                        onJoinRoom ?? onUploadReceipt ?? onGrantEditAccess,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: Text(
+                      onJoinRoom != null
+                          ? 'Join'
+                          : onUploadReceipt != null
+                              ? 'Upload'
+                              : 'Grant',
+                    ),
                   ),
-                ),
-                child: Text(onJoinRoom != null ? 'Join' : 'Upload'),
+                ],
               )
             : !notif.isRead
                 ? Container(

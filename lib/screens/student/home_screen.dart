@@ -15,6 +15,7 @@ import '../../services/event_service.dart';
 import '../../services/post_interaction_service.dart';
 import '../../services/saved_post_service.dart';
 import '../../widgets/event_card.dart';
+import '../../widgets/app_search_field.dart';
 import '../../widgets/post_comment_sheet.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/unilink_logo.dart';
@@ -32,6 +33,7 @@ part 'home/home_events_section.dart';
 part 'home/home_posts_section.dart';
 part 'home/home_app_bar.dart';
 part 'home/home_feed_prioritizer.dart';
+part 'home/home_filter_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +43,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _searchCtrl = TextEditingController();
+  _HomeContentFilter _contentFilter = _HomeContentFilter.all;
+  _HomeDateFilter _dateFilter = _HomeDateFilter.anytime;
+  _HomeMediaFilter _mediaFilter = _HomeMediaFilter.any;
   List<PostModel> _dbPosts = [];
   List<EventModel> _dbEvents = [];
   Set<String> _savedPostIds = {};
@@ -58,7 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(() => setState(() {}));
     _loadFeed();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFeed() async {
@@ -384,6 +397,84 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool _postMatchesSearch(PostModel post, String query) {
+    if (query.isEmpty) return true;
+    final searchable = [
+      post.title,
+      post.description,
+      post.clubName,
+      if ((post.youtubeUrl ?? '').trim().isNotEmpty) 'youtube video',
+      if ((post.videoUrl ?? '').trim().isNotEmpty) 'video',
+      if ((post.audioUrl ?? '').trim().isNotEmpty) 'music audio',
+    ].join(' ').toLowerCase();
+    return searchable.contains(query);
+  }
+
+  bool _eventMatchesSearch(EventModel event, String query) {
+    if (query.isEmpty) return true;
+    final searchable = [
+      event.title,
+      event.description,
+      event.clubName,
+      event.location,
+      event.feeLabel,
+      DateFormat('EEEE MMMM d yyyy h:mm a').format(event.eventDate),
+      if (event.hasVideo) 'video',
+      if (event.hasAudio) 'music audio',
+      if (event.hasExternalForm) 'form',
+    ].join(' ').toLowerCase();
+    return searchable.contains(query);
+  }
+
+  bool _postMatchesFilters(PostModel post) {
+    if (_contentFilter == _HomeContentFilter.events) return false;
+    if (!_matchesDateFilter(post.createdAt)) return false;
+    return switch (_mediaFilter) {
+      _HomeMediaFilter.any => true,
+      _HomeMediaFilter.video =>
+        (post.youtubeUrl ?? '').trim().isNotEmpty ||
+            (post.videoUrl ?? '').trim().isNotEmpty,
+      _HomeMediaFilter.music => (post.audioUrl ?? '').trim().isNotEmpty,
+    };
+  }
+
+  bool _eventMatchesFilters(EventModel event) {
+    if (_contentFilter == _HomeContentFilter.posts) return false;
+    if (!_matchesDateFilter(event.eventDate)) return false;
+    return switch (_mediaFilter) {
+      _HomeMediaFilter.any => true,
+      _HomeMediaFilter.video => event.hasVideo,
+      _HomeMediaFilter.music => event.hasAudio,
+    };
+  }
+
+  bool _matchesDateFilter(DateTime date) {
+    final now = DateTime.now();
+    return switch (_dateFilter) {
+      _HomeDateFilter.anytime => true,
+      _HomeDateFilter.today => _isSameDay(date, now),
+      _HomeDateFilter.thisWeek => _weekStart(date) == _weekStart(now),
+      _HomeDateFilter.thisMonth =>
+        date.year == now.year && date.month == now.month,
+    };
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  DateTime _weekStart(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    return day.subtract(Duration(days: day.weekday - DateTime.monday));
+  }
+
+  void _clearHomeFilters() {
+    setState(() {
+      _contentFilter = _HomeContentFilter.all;
+      _dateFilter = _HomeDateFilter.anytime;
+      _mediaFilter = _HomeMediaFilter.any;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
@@ -394,16 +485,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final userId = user?.id ?? '';
     final followedIds = followProvider.getFollowedIds(userId);
     final prioritizer = _HomeFeedPrioritizer(_memberClubIds);
-    final filteredPosts = prioritizer.posts(
+    final searchQuery = _searchCtrl.text.trim().toLowerCase();
+    final prioritizedPosts = prioritizer.posts(
       _dbPosts,
       followedIds,
       themeProvider.postFeedPriority,
     );
-    final events = prioritizer.events(
+    final prioritizedEvents = prioritizer.events(
       _dbEvents,
       followedIds,
       themeProvider.eventFeedPriority,
     );
+    final filteredPosts = prioritizedPosts
+        .where((post) => _postMatchesSearch(post, searchQuery))
+        .where(_postMatchesFilters)
+        .toList();
+    final events = prioritizedEvents
+        .where((event) => _eventMatchesSearch(event, searchQuery))
+        .where(_eventMatchesFilters)
+        .toList();
+    final hasActiveFilters = searchQuery.isNotEmpty ||
+        _contentFilter != _HomeContentFilter.all ||
+        _dateFilter != _HomeDateFilter.anytime ||
+        _mediaFilter != _HomeMediaFilter.any;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final eventCardWidth = screenWidth < 360 ? screenWidth - 48 : 320.0;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -422,11 +526,33 @@ class _HomeScreenState extends State<HomeScreen> {
               name: user?.name.split(' ').first ?? 'there',
               date: DateFormat('EEEE, MMMM d').format(DateTime.now()),
             ),
+            const SizedBox(height: 12),
+            AppSearchField(
+              controller: _searchCtrl,
+              hintText: 'Search events or posts...',
+            ),
+            const SizedBox(height: 10),
+            _HomeFilterBar(
+              contentFilter: _contentFilter,
+              dateFilter: _dateFilter,
+              mediaFilter: _mediaFilter,
+              hasActiveFilters: hasActiveFilters,
+              onContentChanged: (value) =>
+                  setState(() => _contentFilter = value),
+              onDateChanged: (value) => setState(() => _dateFilter = value),
+              onMediaChanged: (value) => setState(() => _mediaFilter = value),
+              onClear: () {
+                _searchCtrl.clear();
+                _clearHomeFilters();
+                FocusScope.of(context).unfocus();
+              },
+            ),
 
             _HomeEventsSection(
               events: events,
               hasMore: _hasMoreEvents,
               isLoadingMore: _loadingMoreEvents,
+              isSearching: hasActiveFilters,
               cardWidth: eventCardWidth,
               carouselHeight: eventCarouselHeight,
               onLoadMore: _loadMoreEvents,
@@ -442,23 +568,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         
 
-            _HomePostsSection(
-              posts: filteredPosts,
-              hasMore: _hasMorePosts,
-              isLoadingMore: _loadingMorePosts,
-              isInitialLoading: _loadingFeed,
-              hasAnyClubContext:
-                  followedIds.isNotEmpty || _memberClubIds.isNotEmpty,
-              userId: userId,
-              savedPostIds: _savedPostIds,
-              onLoadMore: _loadMorePosts,
-              onOpenPost: _openPostDetail,
-              onLike: _toggleLike,
-              onComment: _showComments,
-              onSave: _toggleSaved,
-              onShare: _sharePost,
-              onClubTap: _openClub,
-            ),
+            if (!hasActiveFilters ||
+                filteredPosts.isNotEmpty ||
+                events.isEmpty ||
+                _loadingFeed)
+              _HomePostsSection(
+                posts: filteredPosts,
+                hasMore: _hasMorePosts,
+                isLoadingMore: _loadingMorePosts,
+                isInitialLoading: _loadingFeed,
+                hasAnyClubContext:
+                    followedIds.isNotEmpty || _memberClubIds.isNotEmpty,
+                isSearching: hasActiveFilters,
+                userId: userId,
+                savedPostIds: _savedPostIds,
+                onLoadMore: _loadMorePosts,
+                onOpenPost: _openPostDetail,
+                onLike: _toggleLike,
+                onComment: _showComments,
+                onSave: _toggleSaved,
+                onShare: _sharePost,
+                onClubTap: _openClub,
+              ),
         
           ],
         ),

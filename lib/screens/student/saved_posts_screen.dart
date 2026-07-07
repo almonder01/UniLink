@@ -5,6 +5,7 @@ import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/club_provider.dart';
 import '../../services/saved_post_service.dart';
+import '../../widgets/app_search_field.dart';
 import '../../widgets/post_card.dart';
 import 'club_detail_screen.dart';
 import 'post_detail_screen.dart';
@@ -124,24 +125,9 @@ class _SavedPostsScreenState extends State<SavedPostsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
           children: [
-            SearchBar(
+            AppSearchField(
               controller: _searchCtrl,
               hintText: 'Search saved posts...',
-              leading: const Icon(Icons.search_rounded),
-              trailing: _searchCtrl.text.isEmpty
-                  ? null
-                  : [
-                      IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          FocusScope.of(context).unfocus();
-                        },
-                      ),
-                    ],
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 16),
-              ),
             ),
             const SizedBox(height: 12),
             SizedBox(

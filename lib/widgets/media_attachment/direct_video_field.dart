@@ -8,7 +8,6 @@ class _DirectVideoField extends StatelessWidget {
   final bool compactPreview;
 
   const _DirectVideoField({
-    super.key,
     required this.controller,
     required this.pendingName,
     required this.onPick,

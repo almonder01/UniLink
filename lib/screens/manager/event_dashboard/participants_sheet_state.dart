@@ -54,24 +54,14 @@ class _ParticipantsSheetState extends State<_ParticipantsSheet> {
 
   Future<void> _approvePending(List<EventRegistration> registrations) async {
     if (registrations.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Approve pending requests?'),
-        content: Text('Approve ${registrations.length} registration request(s)?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Approve'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Approve pending requests?',
+      message: 'Approve ${registrations.length} registration request(s)?',
+      confirmLabel: 'Approve',
+      icon: Icons.how_to_reg_rounded,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     for (final registration in registrations) {
       await EventService().updateRegistrationStatus(

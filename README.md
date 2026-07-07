@@ -8,6 +8,7 @@ The current version supports three user roles: university admin, club manager, a
 
 - Student authentication, editable profile information, gender avatar fallback, optional profile and cover images, privacy settings, media autoplay preferences, and notification preferences.
 - Club discovery with follower/member separation, follow status, member visibility, follower visibility, membership requests, and clickable club identity rows across the app.
+- Home feed search with collapsible filters for content type, event date range, and media availability across matching events and posts.
 - Club profile management with logo, cover image, gallery photos, about text, feature/code display, logo background color, background video, background music, and separate auto-open/autoplay controls.
 - Posts with images, YouTube video, uploaded video, optional music, per-post media auto controls, likes, comments, saved posts, share-to-chat actions, and editable/deletable comments.
 - Event creation and editing with date, time, map location, capacity, fee/currency, optional Google Form link, optional registration text/file requirements, receipts, media, and per-event media auto controls.
@@ -15,8 +16,8 @@ The current version supports three user roles: university admin, club manager, a
 - Direct person-to-person messages with unread indicators, message privacy, and post/event attachments.
 - Club text rooms for members and managers, multiple room management, room invitations, event-based invitation groups, and shareable post/event attachments.
 - Manager payment tools for monthly club payments and event fees with receipt upload/review flow.
-- Admin dashboard for users and clubs, including editable club name/category and category selection or custom entry.
-- Responsive light/dark theme UI with reusable cards, dialogs, lists, avatars, media fields, and paginated home loading.
+- Admin dashboard for users and clubs, including editable club name/category, category selection or custom entry, user messaging, and temporary/permanent club detail edit permission control for managers.
+- Responsive light/dark theme UI with reusable cards, dialogs, search fields, lists, avatars, collapsible media fields, and paginated home loading.
 
 ## Compulsory Features
 
@@ -56,12 +57,12 @@ lib/
   services/              Firebase, chat, event, payment, media, and upload logic
   widgets/               Reusable cards, avatars, map, media, audio/video widgets
 Reports/
-  UniLink_Academic_Report.docx
+  UniLink_Academic_Report_Final.docx
   UniLink_Academic_Report_Text.md
-  build_unilink_academic_report.py
+  build_unilink_final_report.py
 ```
 
-Large UI surfaces have been split into focused components. Examples include `event_dashboard/`, `club_detail/`, `profile/`, `settings/`, `post_detail/`, `event_registration/`, `event_card/`, `post_card/`, `media_attachment/`, `club_profile/`, and chat room dashboard folders. Shared media UI now includes reusable publish media fields, content media display, auto media launching, and manager action banners.
+Large UI surfaces have been split into focused components. Examples include `event_dashboard/`, `club_detail/`, `student/home/`, `profile/`, `settings/`, `post_detail/`, `event_registration/`, `event_card/`, `post_card/`, `media_attachment/`, `club_profile/`, and chat room dashboard folders. Shared UI now includes reusable search fields, confirmation dialogs, publish media fields, collapsible video/music controls, content media display, auto media launching, and manager action banners.
 
 ## Setup
 
@@ -104,6 +105,8 @@ The app uses these main Firestore collections and subcollections:
 - `club_membership_requests`
 - `club_payment_requests`
 - `club_payment_receipts`
+- `club_detail_edit_requests`
+- `club_detail_edit_permissions`
 - `posts`
 - `posts/{postId}/comments`
 - `events`
@@ -115,7 +118,7 @@ The app uses these main Firestore collections and subcollections:
 - `direct_chats/{chatId}/messages`
 - `media_assets`
 
-Important Firestore rules note: the latest app features require rules for `media_assets` and `club_membership_requests`. If these are missing in the deployed Firebase rules, media library saving/renaming and membership requests will fail even when the UI is correct.
+Important Firestore rules note: the latest app features require rules for `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, and `club_detail_edit_permissions`. If these are missing in the deployed Firebase rules, media library saving/renaming, membership requests, and protected club detail edit permissions will fail even when the UI is correct.
 
 Suggested rule shape:
 
@@ -151,12 +154,13 @@ The academic report source and generated Word files are in `Reports/`.
 The main Word report path is:
 
 ```text
-Reports/UniLink_Academic_Report.docx
+Reports/UniLink_Academic_Report_Final.docx
 ```
 
-If that file is open/locked while regenerating, use the generated fallback file:
+Older generated report files are kept for reference:
 
 ```text
+Reports/UniLink_Academic_Report.docx
 Reports/UniLink_Academic_Report_Updated.docx
 ```
 
@@ -166,13 +170,13 @@ The editable report source is:
 Reports/UniLink_Academic_Report_Text.md
 ```
 
-Regenerate the Word report with:
+Regenerate the final Word report with:
 
 ```bash
-python Reports/build_unilink_academic_report.py
+python Reports/build_unilink_final_report.py
 ```
 
-If the main `.docx` is open in Microsoft Word and cannot be overwritten, the script writes `Reports/UniLink_Academic_Report_Updated.docx` instead.
+The final report script writes a new clean DOCX to `Reports/UniLink_Academic_Report_Final.docx`.
 
 ## Verification
 
@@ -184,4 +188,8 @@ flutter analyze
 flutter run
 ```
 
-Also verify Firebase rules against the latest collections, especially `media_assets`, `club_membership_requests`, chat subcollections, notifications, event registrations, and payment receipts.
+Also verify Firebase rules against the latest collections, especially `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, `club_detail_edit_permissions`, chat subcollections, notifications, event registrations, and payment receipts.
+
+## Release Notes
+
+The project is ready for academic/demo submission after Firebase rules and Cloudinary settings are deployed. For a public store release, update the Android package id from `com.example.unilink`, configure a real release signing key instead of the debug signing config, add the iOS Firebase `GoogleService-Info.plist` if building for iOS, and run a real-device regression pass for authentication, media upload/playback, notifications, chat, maps, and payment/registration flows.

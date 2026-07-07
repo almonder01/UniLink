@@ -6,7 +6,6 @@ class _YouTubeVideoField extends StatelessWidget {
   final bool compactPreview;
 
   const _YouTubeVideoField({
-    super.key,
     required this.controller,
     required this.previewTitle,
     required this.compactPreview,

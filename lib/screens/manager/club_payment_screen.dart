@@ -7,6 +7,7 @@ import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/club_payment_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/confirm_action_dialog.dart';
 
 part 'club_payment/monthly_payment_request_card.dart';
 part 'club_payment/payment_stat_card.dart';
@@ -65,7 +66,7 @@ class _ClubPaymentScreenState extends State<ClubPaymentScreen> {
       return;
     }
     final confirmed = await _confirm('Send payment request to all members?');
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _sendingAll = true);
     try {
@@ -97,7 +98,7 @@ class _ClubPaymentScreenState extends State<ClubPaymentScreen> {
       return;
     }
     final confirmed = await _confirm('Send payment request to $email?');
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _sendingOne = true);
     try {
@@ -119,23 +120,13 @@ class _ClubPaymentScreenState extends State<ClubPaymentScreen> {
     }
   }
 
-  Future<bool?> _confirm(String message) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Send'),
-          ),
-        ],
-      ),
+  Future<bool> _confirm(String message) {
+    return showConfirmActionDialog(
+      context,
+      title: 'Confirm',
+      message: message,
+      confirmLabel: 'Send',
+      icon: Icons.send_rounded,
     );
   }
 
