@@ -7,12 +7,11 @@ import '../../providers/club_provider.dart';
 import '../../services/post_interaction_service.dart';
 import '../../services/saved_post_service.dart';
 import '../../widgets/base64_image.dart';
-import '../../widgets/club_audio_player.dart';
+import '../../widgets/content_auto_media_launcher.dart';
+import '../../widgets/content_media_section.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_gallery.dart';
 import '../../widgets/post_comment_sheet.dart';
-import '../../widgets/video_media_preview.dart';
-import '../../widgets/youtube_video_preview.dart';
 import '../chat/share_to_chat_sheet.dart';
 import 'club_detail_screen.dart';
 
@@ -150,27 +149,44 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final logoColor = widget.post.clubLogoColor != null
         ? Color(int.parse(widget.post.clubLogoColor!, radix: 16))
         : Theme.of(context).colorScheme.primary;
+    final autoPlayContentAudio =
+        context.watch<AuthProvider>().currentUser?.autoPlayContentAudio ?? true;
+    final autoOpenContentVideos =
+        context.watch<AuthProvider>().currentUser?.autoOpenContentVideos ??
+            false;
+    final shouldAutoPlayAudio =
+        autoPlayContentAudio && widget.post.audioAutoPlay;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          _PostDetailHeader(post: widget.post, coverColor: coverColor),
-          SliverToBoxAdapter(
-            child: _PostDetailContent(
-              post: widget.post,
-              logoColor: logoColor,
-              liked: _liked,
-              saved: _saved,
-              likeCount: _likeCount,
-              commentCount: _commentCount,
-              onOpenClub: _openClub,
-              onToggleLike: _toggleLike,
-              onShowComments: _showComments,
-              onToggleSaved: _toggleSaved,
-              onSharePost: _sharePost,
+      body: ContentAutoMediaLauncher(
+        title: widget.post.title,
+        youtubeVideoUrl: widget.post.youtubeUrl,
+        directVideoUrl: widget.post.videoUrl,
+        autoOpenVideo: autoOpenContentVideos && widget.post.videoAutoOpen,
+        audioUrl: widget.post.audioUrl,
+        audioType: widget.post.audioType,
+        autoPlayAudio: shouldAutoPlayAudio,
+        child: CustomScrollView(
+          slivers: [
+            _PostDetailHeader(post: widget.post, coverColor: coverColor),
+            SliverToBoxAdapter(
+              child: _PostDetailContent(
+                post: widget.post,
+                logoColor: logoColor,
+                liked: _liked,
+                saved: _saved,
+                likeCount: _likeCount,
+                commentCount: _commentCount,
+                autoPlayAudio: shouldAutoPlayAudio,
+                onOpenClub: _openClub,
+                onToggleLike: _toggleLike,
+                onShowComments: _showComments,
+                onToggleSaved: _toggleSaved,
+                onSharePost: _sharePost,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

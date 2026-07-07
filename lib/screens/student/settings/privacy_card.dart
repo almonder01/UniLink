@@ -13,100 +13,70 @@ class _PrivacyCard extends StatelessWidget {
     return Card(
       child: Column(
         children: [
-          SwitchListTile(
-            secondary: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.visibility_rounded, color: cs.primary, size: 18),
-            ),
-            title: const Text(
-              'Show me in club member lists',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Students can see your name in clubs you are a member of',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
+          _PrivacySwitchTile(
+            icon: Icons.visibility_rounded,
+            iconColor: cs.primary,
+            title: 'Show me in club member lists',
+            subtitle: 'Students can see your name in clubs you are a member of',
             value: user?.showInClubMembers ?? true,
             onChanged: user == null
                 ? null
                 : (value) => auth.updateProfile(showInClubMembers: value),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           ),
           const Divider(height: 1, indent: 56),
-          SwitchListTile(
-            secondary: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.people_alt_rounded,
-                color: Color(0xFF8B5CF6),
-                size: 18,
-              ),
-            ),
-            title: const Text(
-              'Show me in follower list',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Students can see your name in clubs you follow',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
+          _PrivacySwitchTile(
+            icon: Icons.people_alt_rounded,
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'Show me in follower list',
+            subtitle: 'Students can see your name in clubs you follow',
             value: user?.showInClubFollowers ?? true,
             onChanged: user == null
                 ? null
                 : (value) => auth.updateProfile(showInClubFollowers: value),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           ),
           const Divider(height: 1, indent: 56),
-          SwitchListTile(
-            secondary: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF97316).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.ondemand_video_rounded,
-                color: Color(0xFFF97316),
-                size: 18,
-              ),
-            ),
-            title: const Text(
-              'Autoplay club background media',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Allow club pages to start music or open featured media automatically',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
-            value: user?.showClubBackgroundMedia ?? true,
+          _PrivacySwitchTile(
+            icon: Icons.ondemand_video_rounded,
+            iconColor: const Color(0xFFF97316),
+            title: 'Auto-open club videos',
+            subtitle: 'Open featured club videos automatically when allowed',
+            value: user?.autoOpenClubVideos ?? true,
             onChanged: user == null
                 ? null
-                : (value) =>
-                    auth.updateProfile(showClubBackgroundMedia: value),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                : (value) => auth.updateProfile(autoOpenClubVideos: value),
+          ),
+          const Divider(height: 1, indent: 56),
+          _PrivacySwitchTile(
+            icon: Icons.music_note_rounded,
+            iconColor: const Color(0xFF22C55E),
+            title: 'Autoplay club music',
+            subtitle: 'Start club background music automatically when allowed',
+            value: user?.autoPlayClubMusic ?? true,
+            onChanged: user == null
+                ? null
+                : (value) => auth.updateProfile(autoPlayClubMusic: value),
+          ),
+          const Divider(height: 1, indent: 56),
+          _PrivacySwitchTile(
+            icon: Icons.smart_display_rounded,
+            iconColor: const Color(0xFF6366F1),
+            title: 'Auto-open post and event videos',
+            subtitle: 'Open videos automatically when the club enables it',
+            value: user?.autoOpenContentVideos ?? false,
+            onChanged: user == null
+                ? null
+                : (value) => auth.updateProfile(autoOpenContentVideos: value),
+          ),
+          const Divider(height: 1, indent: 56),
+          _PrivacySwitchTile(
+            icon: Icons.library_music_rounded,
+            iconColor: const Color(0xFF14B8A6),
+            title: 'Autoplay post and event music',
+            subtitle: 'Start music automatically when the club enables it',
+            value: user?.autoPlayContentAudio ?? true,
+            onChanged: user == null
+                ? null
+                : (value) => auth.updateProfile(autoPlayContentAudio: value),
           ),
           const Divider(height: 1, indent: 56),
           Padding(
@@ -178,6 +148,54 @@ class _PrivacyCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PrivacySwitchTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  const _PrivacySwitchTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SwitchListTile(
+      secondary: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 18),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: cs.onSurface.withValues(alpha: 0.5),
+        ),
+      ),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 }

@@ -78,15 +78,12 @@ class _ClubExperienceCard extends StatelessWidget {
               wrapInCard: false,
               compactPreviews: true,
               videoOptions: [
-                SwitchListTile(
+                MediaAutoOptionSwitch(
                   value: backgroundVideoAutoOpen,
                   onChanged: onBackgroundVideoAutoOpenChanged,
-                  title: const Text(
-                    'Auto-open video',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: const Text('Only if the student allows auto media'),
-                  contentPadding: EdgeInsets.zero,
+                  title: 'Auto-open video',
+                  subtitle: 'Only if the student allows club videos',
+                  icon: Icons.ondemand_video_rounded,
                 ),
               ],
             ),
@@ -115,19 +112,12 @@ class _ClubExperienceCard extends StatelessWidget {
                   wrapInCard: false,
                   compactPreviews: true,
                   audioOptions: [
-                    SwitchListTile(
+                    MediaAutoOptionSwitch(
                       value: musicAutoPlay,
                       onChanged: onMusicAutoPlayChanged,
-                      title: const Text(
-                        'Auto-play music',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      subtitle:
-                          const Text('Only if the student allows auto media'),
-                      contentPadding: EdgeInsets.zero,
+                      title: 'Auto-play music',
+                      subtitle: 'Only if the student allows club music',
+                      icon: Icons.music_note_rounded,
                     ),
                   ],
                 ),

@@ -164,20 +164,27 @@ Future<void> showYouTubePreviewDialog(
   BuildContext context, {
   required String url,
   required String title,
+  bool autoPlay = false,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) => _YouTubePlayerDialog(url: url, title: title),
+    builder: (_) => _YouTubePlayerDialog(
+      url: url,
+      title: title,
+      autoPlay: autoPlay,
+    ),
   );
 }
 
 class _YouTubePlayerDialog extends StatefulWidget {
   final String url;
   final String title;
+  final bool autoPlay;
 
   const _YouTubePlayerDialog({
     required this.url,
     required this.title,
+    required this.autoPlay,
   });
 
   @override
@@ -194,7 +201,7 @@ class _YouTubePlayerDialogState extends State<_YouTubePlayerDialog> {
     if (videoId == null) return;
     _controller = YoutubePlayerController.fromVideoId(
       videoId: videoId,
-      autoPlay: false,
+      autoPlay: widget.autoPlay,
       params: const YoutubePlayerParams(
         mute: false,
         enableCaption: false,

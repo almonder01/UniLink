@@ -5,6 +5,7 @@ import '../../services/database_service.dart';
 import '../../widgets/post_card.dart';
 import '../student/post_detail_screen.dart';
 import 'create_post_screen.dart';
+import 'manager_action_banner.dart';
 import 'media_library_screen.dart';
 import 'menu_tile.dart';
 import 'popup_menu_position.dart';
@@ -133,7 +134,14 @@ class PostsTabState extends State<PostsTab> {
         if (i == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _PostMediaLibraryBanner(onOpen: _openMediaLibrary),
+            child: ManagerActionBanner(
+              icon: Icons.perm_media_rounded,
+              title: 'Media Library',
+              subtitle: 'Reuse uploaded videos and music links',
+              tooltip: 'Open media library',
+              onPressed: _openMediaLibrary,
+              padding: EdgeInsets.zero,
+            ),
           );
         }
         if (_posts.isEmpty) {
@@ -184,40 +192,6 @@ class PostsTabState extends State<PostsTab> {
           ),
         );
       },
-    );
-  }
-}
-
-class _PostMediaLibraryBanner extends StatelessWidget {
-  final VoidCallback onOpen;
-
-  const _PostMediaLibraryBanner({required this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: cs.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.perm_media_rounded, color: cs.primary),
-        ),
-        title: const Text(
-          'Media Library',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        subtitle: const Text('Reuse uploaded videos and music links'),
-        trailing: IconButton.filledTonal(
-          tooltip: 'Open media library',
-          onPressed: onOpen,
-          icon: const Icon(Icons.arrow_forward_rounded),
-        ),
-      ),
     );
   }
 }

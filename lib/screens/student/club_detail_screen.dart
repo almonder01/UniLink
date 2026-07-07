@@ -315,13 +315,17 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   @override
   Widget build(BuildContext context) {
     final userId = context.read<AuthProvider>().currentUser?.id ?? '';
-    final autoPlayClubMedia =
-        context.watch<AuthProvider>().currentUser?.showClubBackgroundMedia ??
-            true;
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final autoOpenClubVideos = currentUser?.autoOpenClubVideos ??
+        currentUser?.showClubBackgroundMedia ??
+        true;
+    final autoPlayClubMusic = currentUser?.autoPlayClubMusic ??
+        currentUser?.showClubBackgroundMedia ??
+        true;
     final followProvider = context.watch<ClubFollowProvider>();
     final isFollowed = followProvider.isFollowing(userId, widget.club.id);
     final clubColor = Color(int.parse(widget.club.logoColor, radix: 16));
-    if (autoPlayClubMedia &&
+    if (autoOpenClubVideos &&
         widget.club.backgroundVideoAutoOpen &&
         !_openedBackgroundPreview &&
         (widget.club.backgroundVideoUrl ?? '').trim().isNotEmpty) {
@@ -421,7 +425,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 url: widget.club.backgroundMusicUrl!.trim(),
                 title: '${widget.club.name} music',
                 autoPlay:
-                    autoPlayClubMedia && widget.club.backgroundMusicAutoPlay,
+                    autoPlayClubMusic && widget.club.backgroundMusicAutoPlay,
                 compact: true,
               ),
             ),

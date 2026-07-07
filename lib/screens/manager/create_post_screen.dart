@@ -12,7 +12,7 @@ import '../../services/cloudinary_upload_service.dart';
 import '../../services/database_service.dart';
 import '../../services/media_asset_service.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/media_attachment_fields.dart';
+import '../../widgets/publish_media_attachment_fields.dart';
 import 'additional_photos_grid.dart';
 import 'color_swatch_picker.dart';
 import 'cover_photo_picker.dart';
@@ -47,6 +47,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   PlatformFile? _pendingAudioFile;
   String _videoType = 'youtube';
   String _audioType = 'audio';
+  bool _videoAutoOpen = false;
+  bool _audioAutoPlay = true;
   String _selectedColor = 'FF6366F1';
   Uint8List? _coverImage;
   final List<Uint8List> _additionalImages = [];
@@ -71,6 +73,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _audioUrlCtrl.text = post.audioUrl ?? '';
     _videoType = (post.videoUrl ?? '').trim().isNotEmpty ? 'video' : 'youtube';
     _audioType = post.audioType == 'youtube' ? 'youtube' : 'audio';
+    _videoAutoOpen = post.videoAutoOpen;
+    _audioAutoPlay = post.audioAutoPlay;
     _selectedColor = post.coverColor;
     _coverImage = _decodeImage(post.coverImageBase64);
     _additionalImages.addAll(
@@ -277,8 +281,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         youtubeUrl: youtubeUrl.isEmpty ? null : youtubeUrl,
         videoUrl: videoUrl.isEmpty ? null : videoUrl,
         videoType: 'video',
+        videoAutoOpen: _videoAutoOpen,
         audioUrl: audioUrl.isEmpty ? null : audioUrl,
         audioType: _audioType,
+        audioAutoPlay: _audioAutoPlay,
         createdAt: existing?.createdAt ?? DateTime.now(),
         likedUserIds: existing?.likedUserIds ?? const [],
         likeCount: existing?.likeCount ?? 0,
@@ -450,7 +456,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     : null,
               ),
               const SizedBox(height: 20),
-              MediaAttachmentFields(
+              PublishMediaAttachmentFields(
                 title: 'Media',
                 subtitle: 'Add one video source and optional background music.',
                 youtubeVideoController: _youtubeCtrl,
@@ -465,6 +471,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ? _youtubeCtrl.text.trim()
                     : _videoUrlCtrl.text.trim(),
                 onVideoAssetSelected: _selectVideoAsset,
+                videoAutoOpen: _videoAutoOpen,
+                onVideoAutoOpenChanged: (value) =>
+                    setState(() => _videoAutoOpen = value),
                 audioController: _audioUrlCtrl,
                 audioType: _audioType,
                 onAudioTypeChanged: (value) =>
@@ -476,6 +485,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 onAudioAssetSelected: _selectAudioAsset,
                 videoPreviewTitle: 'Post video preview',
                 audioPreviewTitle: 'Post music preview',
+                audioAutoPlay: _audioAutoPlay,
+                onAudioAutoPlayChanged: (value) =>
+                    setState(() => _audioAutoPlay = value),
               ),
               const SizedBox(height: 20),
               AdditionalPhotosGrid(

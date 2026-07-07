@@ -12,6 +12,7 @@ import '../../services/club_service.dart';
 import '../../services/media_asset_service.dart';
 import '../../widgets/base64_image.dart';
 import '../../widgets/identity_avatar.dart';
+import '../../widgets/media_auto_option_switch.dart';
 import '../../widgets/media_attachment_fields.dart';
 import 'additional_photos_grid.dart';
 

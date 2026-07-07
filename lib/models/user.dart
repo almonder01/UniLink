@@ -19,6 +19,10 @@ class UserModel {
   final bool notifyChatFromManagers;
   final bool notifyChatFromEveryone;
   final bool showClubBackgroundMedia;
+  final bool autoOpenClubVideos;
+  final bool autoPlayClubMusic;
+  final bool autoOpenContentVideos;
+  final bool autoPlayContentAudio;
 
   const UserModel({
     required this.id,
@@ -41,34 +45,43 @@ class UserModel {
     this.notifyChatFromManagers = true,
     this.notifyChatFromEveryone = true,
     this.showClubBackgroundMedia = true,
+    this.autoOpenClubVideos = true,
+    this.autoPlayClubMusic = true,
+    this.autoOpenContentVideos = false,
+    this.autoPlayContentAudio = true,
   });
 
-  static UserModel fromMap(Map<String, dynamic> m) => UserModel(
-        id: m['id'] as String,
-        name: m['name'] as String? ?? '',
-        studentId: m['student_id'] as String? ?? '',
-        email: m['email'] as String? ?? '',
-        role: m['role'] as String? ?? 'student',
-        major: m['major'] as String?,
-        photoUrl: m['photo_url'] as String?,
-        photoBase64: m['photo_base64'] as String?,
-        coverImageBase64: m['cover_image_base64'] as String?,
-        coverColor: m['cover_color'] as String? ?? 'FF6366F1',
-        gender: m['gender'] as String?,
-        managedClubId: m['managed_club_id'] as String?,
-        showInClubMembers: m['show_in_club_members'] as bool? ?? true,
-        showInClubFollowers: m['show_in_club_followers'] as bool? ?? true,
-        messagePrivacy: m['message_privacy'] as String? ?? 'everyone',
-        notifyChatMessages: m['notify_chat_messages'] as bool? ?? true,
-        notifyChatFromMembers:
-            m['notify_chat_from_members'] as bool? ?? true,
-        notifyChatFromManagers:
-            m['notify_chat_from_managers'] as bool? ?? true,
-        notifyChatFromEveryone:
-            m['notify_chat_from_everyone'] as bool? ?? true,
-        showClubBackgroundMedia:
-            m['show_club_background_media'] as bool? ?? true,
-      );
+  static UserModel fromMap(Map<String, dynamic> m) {
+    final legacyClubMedia = m['show_club_background_media'] as bool?;
+    return UserModel(
+      id: m['id'] as String,
+      name: m['name'] as String? ?? '',
+      studentId: m['student_id'] as String? ?? '',
+      email: m['email'] as String? ?? '',
+      role: m['role'] as String? ?? 'student',
+      major: m['major'] as String?,
+      photoUrl: m['photo_url'] as String?,
+      photoBase64: m['photo_base64'] as String?,
+      coverImageBase64: m['cover_image_base64'] as String?,
+      coverColor: m['cover_color'] as String? ?? 'FF6366F1',
+      gender: m['gender'] as String?,
+      managedClubId: m['managed_club_id'] as String?,
+      showInClubMembers: m['show_in_club_members'] as bool? ?? true,
+      showInClubFollowers: m['show_in_club_followers'] as bool? ?? true,
+      messagePrivacy: m['message_privacy'] as String? ?? 'everyone',
+      notifyChatMessages: m['notify_chat_messages'] as bool? ?? true,
+      notifyChatFromMembers: m['notify_chat_from_members'] as bool? ?? true,
+      notifyChatFromManagers: m['notify_chat_from_managers'] as bool? ?? true,
+      notifyChatFromEveryone: m['notify_chat_from_everyone'] as bool? ?? true,
+      showClubBackgroundMedia: legacyClubMedia ?? true,
+      autoOpenClubVideos:
+          m['auto_open_club_videos'] as bool? ?? legacyClubMedia ?? true,
+      autoPlayClubMusic:
+          m['auto_play_club_music'] as bool? ?? legacyClubMedia ?? true,
+      autoOpenContentVideos: m['auto_open_content_videos'] as bool? ?? false,
+      autoPlayContentAudio: m['auto_play_content_audio'] as bool? ?? true,
+    );
+  }
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -90,6 +103,10 @@ class UserModel {
         'notify_chat_from_managers': notifyChatFromManagers,
         'notify_chat_from_everyone': notifyChatFromEveryone,
         'show_club_background_media': showClubBackgroundMedia,
+        'auto_open_club_videos': autoOpenClubVideos,
+        'auto_play_club_music': autoPlayClubMusic,
+        'auto_open_content_videos': autoOpenContentVideos,
+        'auto_play_content_audio': autoPlayContentAudio,
         if (managedClubId != null) 'managed_club_id': managedClubId,
       };
 
@@ -109,6 +126,10 @@ class UserModel {
     bool? notifyChatFromManagers,
     bool? notifyChatFromEveryone,
     bool? showClubBackgroundMedia,
+    bool? autoOpenClubVideos,
+    bool? autoPlayClubMusic,
+    bool? autoOpenContentVideos,
+    bool? autoPlayContentAudio,
   }) {
     return UserModel(
       id: id,
@@ -124,18 +145,21 @@ class UserModel {
       coverColor: coverColor ?? this.coverColor,
       managedClubId: managedClubId,
       showInClubMembers: showInClubMembers ?? this.showInClubMembers,
-      showInClubFollowers:
-          showInClubFollowers ?? this.showInClubFollowers,
+      showInClubFollowers: showInClubFollowers ?? this.showInClubFollowers,
       messagePrivacy: messagePrivacy ?? this.messagePrivacy,
       notifyChatMessages: notifyChatMessages ?? this.notifyChatMessages,
       notifyChatFromMembers:
           notifyChatFromMembers ?? this.notifyChatFromMembers,
       notifyChatFromManagers:
           notifyChatFromManagers ?? this.notifyChatFromManagers,
-      notifyChatFromEveryone:
-          notifyChatFromEveryone ?? this.notifyChatFromEveryone,
+      notifyChatFromEveryone: notifyChatFromEveryone ?? this.notifyChatFromEveryone,
       showClubBackgroundMedia:
           showClubBackgroundMedia ?? this.showClubBackgroundMedia,
+      autoOpenClubVideos: autoOpenClubVideos ?? this.autoOpenClubVideos,
+      autoPlayClubMusic: autoPlayClubMusic ?? this.autoPlayClubMusic,
+      autoOpenContentVideos:
+          autoOpenContentVideos ?? this.autoOpenContentVideos,
+      autoPlayContentAudio: autoPlayContentAudio ?? this.autoPlayContentAudio,
     );
   }
 }

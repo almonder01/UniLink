@@ -3,12 +3,14 @@ part of '../event_detail_screen.dart';
 class _EventDetailContent extends StatelessWidget {
   final EventModel event;
   final Color logoColor;
+  final bool autoPlayAudio;
   final VoidCallback onClubTap;
   final VoidCallback onCopyExternalForm;
 
   const _EventDetailContent({
     required this.event,
     required this.logoColor,
+    required this.autoPlayAudio,
     required this.onClubTap,
     required this.onCopyExternalForm,
   });
@@ -140,46 +142,19 @@ class _EventDetailContent extends StatelessWidget {
                 color: cs.onSurface.withValues(alpha: 0.75),
               ),
             ),
-            if (event.hasVideo) ...[
-              const SizedBox(height: 20),
-              const Text(
-                'Video',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            if (event.hasVideo || event.hasAudio) ...[
+              ContentMediaSection(
+                title: event.title,
+                youtubeVideoUrl: event.youtubeUrl,
+                directVideoUrl: event.videoUrl,
+                videoType: event.videoType,
+                audioUrl: event.audioUrl,
+                audioType: event.audioType,
+                audioSubtitle: 'Event music',
+                autoPlayAudio: autoPlayAudio,
+                topSpacing: 20,
+                betweenSpacing: 20,
               ),
-              const SizedBox(height: 10),
-              if (event.hasYoutubeVideo) ...[
-                YouTubeVideoPreview(
-                  url: event.youtubeUrl!.trim(),
-                  title: event.title,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (event.hasDirectVideo)
-                VideoMediaPreview(
-                  url: event.videoUrl!.trim(),
-                  type: event.videoType,
-                  title: event.title,
-                ),
-            ],
-            if (event.hasAudio) ...[
-              const SizedBox(height: 20),
-              const Text(
-                'Music',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
-              if (event.audioType == 'youtube')
-                YouTubeVideoPreview(
-                  url: event.audioUrl!.trim(),
-                  title: '${event.title} music',
-                  compact: true,
-                )
-              else
-                ClubAudioPlayer(
-                  url: event.audioUrl!.trim(),
-                  title: '${event.title} music',
-                  autoPlay: false,
-                ),
             ],
             if (event.hasRegistrationRequirement) ...[
               const SizedBox(height: 20),

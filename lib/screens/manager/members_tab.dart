@@ -7,6 +7,7 @@ import '../../screens/chat/direct_chat_screen.dart';
 import '../../services/club_membership_service.dart';
 import '../../services/direct_chat_service.dart';
 import '../../widgets/identity_avatar.dart';
+import 'manager_action_banner.dart';
 import 'membership_requests_screen.dart';
 
 part 'members/empty_members_state.dart';

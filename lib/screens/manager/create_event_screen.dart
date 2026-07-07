@@ -13,7 +13,7 @@ import '../../services/cloudinary_upload_service.dart';
 import '../../services/event_service.dart';
 import '../../services/media_asset_service.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/media_attachment_fields.dart';
+import '../../widgets/publish_media_attachment_fields.dart';
 import '../../widgets/youtube_video_preview.dart';
 import 'additional_photos_grid.dart';
 import 'color_swatch_picker.dart';
@@ -64,6 +64,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   PlatformFile? _pendingAudioFile;
   String _videoType = 'youtube';
   String _audioType = 'audio';
+  bool _videoAutoOpen = false;
+  bool _audioAutoPlay = true;
   String _selectedColor = 'FFFF6B35';
   String _feeCurrency = 'RM';
   bool _requiresRegistrationText = false;
@@ -102,6 +104,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _audioUrlCtrl.text = event.audioUrl ?? '';
     _videoType = (event.videoUrl ?? '').trim().isNotEmpty ? 'video' : 'youtube';
     _audioType = event.audioType == 'youtube' ? 'youtube' : 'audio';
+    _videoAutoOpen = event.videoAutoOpen;
+    _audioAutoPlay = event.audioAutoPlay;
     _requiresRegistrationText = event.requiresRegistrationText;
     _requiresRegistrationFile = event.requiresRegistrationFile;
     if (event.latitude != null && event.longitude != null) {
@@ -472,8 +476,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         youtubeUrl: youtubeUrl.isEmpty ? null : youtubeUrl,
         videoUrl: videoUrl.isEmpty ? null : videoUrl,
         videoType: 'video',
+        videoAutoOpen: _videoAutoOpen,
         audioUrl: audioUrl.isEmpty ? null : audioUrl,
         audioType: _audioType,
+        audioAutoPlay: _audioAutoPlay,
         eventDate: eventDate,
         feeAmount: feeAmount,
         feeCurrency: _feeCurrency,
@@ -607,7 +613,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              MediaAttachmentFields(
+              PublishMediaAttachmentFields(
                 title: 'Media',
                 subtitle: 'Add one video source and optional event music.',
                 youtubeVideoController: _youtubeCtrl,
@@ -622,6 +628,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     ? _youtubeCtrl.text.trim()
                     : _videoUrlCtrl.text.trim(),
                 onVideoAssetSelected: _selectVideoAsset,
+                videoAutoOpen: _videoAutoOpen,
+                onVideoAutoOpenChanged: (value) =>
+                    setState(() => _videoAutoOpen = value),
                 audioController: _audioUrlCtrl,
                 audioType: _audioType,
                 onAudioTypeChanged: (value) =>
@@ -633,6 +642,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 onAudioAssetSelected: _selectAudioAsset,
                 videoPreviewTitle: 'Event video preview',
                 audioPreviewTitle: 'Event music preview',
+                audioAutoPlay: _audioAutoPlay,
+                onAudioAutoPlayChanged: (value) =>
+                    setState(() => _audioAutoPlay = value),
               ),
               const SizedBox(height: 16),
               AdditionalPhotosGrid(

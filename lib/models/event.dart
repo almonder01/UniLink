@@ -16,8 +16,10 @@ class EventModel {
   final String? youtubeUrl;
   final String? videoUrl;
   final String videoType;
+  final bool videoAutoOpen;
   final String? audioUrl;
   final String audioType;
+  final bool audioAutoPlay;
   final DateTime eventDate;
   final double? feeAmount;
   final String feeCurrency;
@@ -49,8 +51,10 @@ class EventModel {
     this.youtubeUrl,
     this.videoUrl,
     this.videoType = 'video',
+    this.videoAutoOpen = false,
     this.audioUrl,
     this.audioType = 'audio',
+    this.audioAutoPlay = true,
     required this.eventDate,
     this.feeAmount,
     this.feeCurrency = 'RM',
@@ -109,8 +113,10 @@ class EventModel {
         'youtubeUrl': youtubeUrl?.trim() ?? '',
         'videoUrl': videoUrl?.trim() ?? '',
         'videoType': videoType,
+        'videoAutoOpen': videoAutoOpen,
         'audioUrl': audioUrl?.trim() ?? '',
         'audioType': audioType,
+        'audioAutoPlay': audioAutoPlay,
         'eventDate': eventDate.toIso8601String(),
         'feeAmount': feeAmount,
         'feeCurrency': feeCurrency,
@@ -142,8 +148,10 @@ class EventModel {
         youtubeUrl: map['youtubeUrl'] as String?,
         videoUrl: map['videoUrl'] as String?,
         videoType: map['videoType'] as String? ?? 'video',
+        videoAutoOpen: map['videoAutoOpen'] as bool? ?? false,
         audioUrl: map['audioUrl'] as String?,
         audioType: map['audioType'] as String? ?? 'audio',
+        audioAutoPlay: map['audioAutoPlay'] as bool? ?? true,
         eventDate: DateTime.parse(map['eventDate'] as String),
         feeAmount: (map['feeAmount'] as num?)?.toDouble(),
         feeCurrency: map['feeCurrency'] as String? ?? 'RM',
@@ -171,8 +179,10 @@ class EventModel {
     String? youtubeUrl,
     String? videoUrl,
     String? videoType,
+    bool? videoAutoOpen,
     String? audioUrl,
     String? audioType,
+    bool? audioAutoPlay,
     DateTime? eventDate,
     double? feeAmount,
     String? feeCurrency,
@@ -204,8 +214,10 @@ class EventModel {
         youtubeUrl: youtubeUrl ?? this.youtubeUrl,
         videoUrl: videoUrl ?? this.videoUrl,
         videoType: videoType ?? this.videoType,
+        videoAutoOpen: videoAutoOpen ?? this.videoAutoOpen,
         audioUrl: audioUrl ?? this.audioUrl,
         audioType: audioType ?? this.audioType,
+        audioAutoPlay: audioAutoPlay ?? this.audioAutoPlay,
         eventDate: eventDate ?? this.eventDate,
         feeAmount: feeAmount ?? this.feeAmount,
         feeCurrency: feeCurrency ?? this.feeCurrency,

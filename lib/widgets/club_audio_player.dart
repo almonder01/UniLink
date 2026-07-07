@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 class ClubAudioPlayer extends StatefulWidget {
   final String url;
   final String title;
+  final String subtitle;
   final bool autoPlay;
   final bool compact;
 
@@ -11,6 +12,7 @@ class ClubAudioPlayer extends StatefulWidget {
     super.key,
     required this.url,
     required this.title,
+    this.subtitle = 'Background music',
     this.autoPlay = true,
     this.compact = false,
   });
@@ -30,6 +32,27 @@ class _ClubAudioPlayerState extends State<ClubAudioPlayer> {
     super.initState();
     _playRequested = widget.autoPlay;
     _prepare();
+  }
+
+  @override
+  void didUpdateWidget(covariant ClubAudioPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _loading = true;
+      _error = null;
+      _playRequested = widget.autoPlay;
+      _player.stop().catchError((_) {});
+      _prepare();
+      return;
+    }
+    if (oldWidget.autoPlay != widget.autoPlay) {
+      _playRequested = widget.autoPlay;
+      if (widget.autoPlay) {
+        _player.play().catchError((_) {});
+      } else {
+        _player.pause().catchError((_) {});
+      }
+    }
   }
 
   @override
@@ -125,7 +148,7 @@ class _ClubAudioPlayerState extends State<ClubAudioPlayer> {
                   if (!widget.compact)
                     Text(
                       _error ??
-                          (_loading ? 'Loading audio...' : 'Background music'),
+                          (_loading ? 'Loading audio...' : widget.subtitle),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
