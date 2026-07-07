@@ -49,41 +49,60 @@ class _ClubExperienceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MediaAttachmentFields(
-              title: 'Club Experience',
-              subtitle: 'Choose what visitors can see on the club page.',
-              youtubeVideoController: backgroundVideoCtrl,
-              directVideoController: backgroundVideoCtrl,
-              videoType: backgroundVideoType,
-              onVideoTypeChanged: onBackgroundVideoTypeChanged,
-              onPickVideo: onUploadBackgroundVideo,
-              pendingVideoName: pendingBackgroundVideoName,
-              videoAssets: videoAssets,
-              selectedVideoUrl: backgroundVideoCtrl.text.trim(),
-              onVideoAssetSelected: onVideoAssetSelected,
-              audioController: musicCtrl,
-              audioType: musicType,
-              onAudioTypeChanged: onMusicTypeChanged,
-              onPickAudio: onUploadMusic,
-              pendingAudioName: pendingMusicName,
-              videoPreviewTitle: 'Club background preview',
-              audioPreviewTitle: 'Club music preview',
-              showAudio: false,
-              wrapInCard: false,
-              compactPreviews: true,
-              videoOptions: [
-                MediaAutoOptionSwitch(
-                  value: backgroundVideoAutoOpen,
-                  onChanged: onBackgroundVideoAutoOpenChanged,
-                  title: 'Auto-open video',
-                  subtitle: 'Only if the student allows club videos',
-                  icon: Icons.ondemand_video_rounded,
+            const Text(
+              'Club Experience',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choose what visitors can see on the club page.',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.58),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _ExperienceExpansion(
+              icon: Icons.ondemand_video_rounded,
+              title: 'Background video',
+              initiallyExpanded: true,
+              children: [
+                MediaAttachmentFields(
+                  youtubeVideoController: backgroundVideoCtrl,
+                  directVideoController: backgroundVideoCtrl,
+                  videoType: backgroundVideoType,
+                  onVideoTypeChanged: onBackgroundVideoTypeChanged,
+                  onPickVideo: onUploadBackgroundVideo,
+                  pendingVideoName: pendingBackgroundVideoName,
+                  videoAssets: videoAssets,
+                  selectedVideoUrl: backgroundVideoCtrl.text.trim(),
+                  onVideoAssetSelected: onVideoAssetSelected,
+                  audioController: musicCtrl,
+                  audioType: musicType,
+                  onAudioTypeChanged: onMusicTypeChanged,
+                  onPickAudio: onUploadMusic,
+                  pendingAudioName: pendingMusicName,
+                  videoPreviewTitle: 'Club background preview',
+                  audioPreviewTitle: 'Club music preview',
+                  showAudio: false,
+                  wrapInCard: false,
+                  compactPreviews: true,
+                  videoOptions: [
+                    MediaAutoOptionSwitch(
+                      value: backgroundVideoAutoOpen,
+                      onChanged: onBackgroundVideoAutoOpenChanged,
+                      title: 'Auto-open video',
+                      subtitle: 'Only if the student allows club videos',
+                      icon: Icons.ondemand_video_rounded,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -177,11 +196,13 @@ class _ClubExperienceCard extends StatelessWidget {
 class _ExperienceExpansion extends StatelessWidget {
   final IconData icon;
   final String title;
+  final bool initiallyExpanded;
   final List<Widget> children;
 
   const _ExperienceExpansion({
     required this.icon,
     required this.title,
+    this.initiallyExpanded = false,
     required this.children,
   });
 
@@ -191,6 +212,7 @@ class _ExperienceExpansion extends StatelessWidget {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 12),
         leading: Icon(icon, color: cs.primary),
