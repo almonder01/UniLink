@@ -6,6 +6,7 @@ import '../../widgets/post_card.dart';
 import '../student/post_detail_screen.dart';
 import 'create_post_screen.dart';
 import 'menu_tile.dart';
+import 'popup_menu_position.dart';
 import 'three_dot_button.dart';
 
 class PostsTab extends StatefulWidget {
@@ -91,36 +92,18 @@ class PostsTabState extends State<PostsTab> {
     if (result != null) _loadPosts();
   }
 
-  RelativeRect _menuPosition(BuildContext anchorContext) {
-    final buttonBox = anchorContext.findRenderObject() as RenderBox;
-    final overlayBox = Navigator.of(anchorContext)
-        .overlay!
-        .context
-        .findRenderObject() as RenderBox;
-    final topLeft =
-        buttonBox.localToGlobal(Offset.zero, ancestor: overlayBox);
-    return RelativeRect.fromRect(
-      Rect.fromLTWH(
-        topLeft.dx,
-        topLeft.dy,
-        buttonBox.size.width,
-        buttonBox.size.height,
-      ),
-      Offset.zero & overlayBox.size,
-    );
-  }
-
   void _showPostMenu(BuildContext anchorContext, PostModel post) {
     showMenu<String>(
       context: anchorContext,
-      position: _menuPosition(anchorContext),
+      position: popupMenuPositionForAnchor(anchorContext),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       items: const [
         PopupMenuItem(
-            value: 'edit', child: MenuTile(Icons.edit_outlined, 'Edit')),
+            value: 'edit',
+            child: PopupMenuTile(Icons.edit_outlined, 'Edit')),
         PopupMenuItem(
             value: 'delete',
-            child: MenuTile(Icons.delete_outline_rounded, 'Delete',
+            child: PopupMenuTile(Icons.delete_outline_rounded, 'Delete',
                 color: Colors.red)),
       ],
     ).then((val) {
