@@ -4,6 +4,7 @@ class _HomeEventsSection extends StatelessWidget {
   final List<EventModel> events;
   final bool hasMore;
   final bool isLoadingMore;
+  final bool isSearching;
   final double cardWidth;
   final double carouselHeight;
   final VoidCallback onLoadMore;
@@ -16,6 +17,7 @@ class _HomeEventsSection extends StatelessWidget {
     required this.events,
     required this.hasMore,
     required this.isLoadingMore,
+    required this.isSearching,
     required this.cardWidth,
     required this.carouselHeight,
     required this.onLoadMore,
@@ -33,9 +35,9 @@ class _HomeEventsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        const Text(
-          'Upcoming Events',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        Text(
+          isSearching ? 'Matching Events' : 'Upcoming Events',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         SizedBox(

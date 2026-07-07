@@ -4,6 +4,7 @@ import '../../models/club.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/club_follow_provider.dart';
 import '../../providers/club_provider.dart';
+import '../../widgets/app_search_field.dart';
 import '../../widgets/club_card.dart';
 import 'club_detail_screen.dart';
 
@@ -82,24 +83,9 @@ class _ClubsScreenState extends State<ClubsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: SearchBar(
+            child: AppSearchField(
               controller: _searchCtrl,
               hintText: 'Search clubs...',
-              leading: const Icon(Icons.search_rounded),
-              trailing: _searchCtrl.text.isNotEmpty
-                  ? [
-                      IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          FocusScope.of(context).unfocus();
-                        },
-                      ),
-                    ]
-                  : null,
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 16),
-              ),
             ),
           ),
           const SizedBox(height: 12),

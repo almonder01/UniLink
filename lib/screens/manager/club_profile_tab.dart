@@ -1,16 +1,21 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/club.dart';
 import '../../models/media_asset.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/cloudinary_upload_service.dart';
+import '../../services/club_detail_edit_request_service.dart';
 import '../../services/club_service.dart';
 import '../../services/media_asset_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_auto_option_switch.dart';
 import '../../widgets/media_attachment_fields.dart';
@@ -49,6 +54,7 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   final _picker = ImagePicker();
   final _cloudinary = CloudinaryUploadService();
   final _mediaAssets = MediaAssetService();
+  final _detailEditRequests = ClubDetailEditRequestService();
 
   String _logoColor = 'FF6366F1';
   String _backgroundVideoType = 'youtube';
@@ -63,6 +69,11 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   final List<Uint8List> _galleryImages = [];
   List<MediaAsset> _savedMediaAssets = [];
   bool _saving = false;
+  bool _detailEditAccessLoading = true;
+  bool _canEditDetails = false;
+  bool _requestingDetailEdit = false;
+  DateTime? _detailEditExpiresAt;
+  Timer? _detailEditExpiryTimer;
 
   static const _logoColors = [
     'FF6366F1',
@@ -99,10 +110,14 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
     _galleryImages.addAll(
       widget.club.galleryBase64List.map(_decode).whereType<Uint8List>(),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadDetailEditAccess();
+    });
   }
 
   @override
   void dispose() {
+    _detailEditExpiryTimer?.cancel();
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _backgroundVideoCtrl.dispose();
@@ -155,6 +170,103 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
+  }
+
+  Future<bool> _loadDetailEditAccess() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) {
+      if (mounted) {
+        setState(() {
+          _detailEditAccessLoading = false;
+          _canEditDetails = false;
+          _detailEditExpiresAt = null;
+        });
+      }
+      return false;
+    }
+
+    if (mounted) setState(() => _detailEditAccessLoading = true);
+    final expiresAt = await _detailEditRequests.activePermissionExpiresAt(
+      clubId: widget.club.id,
+      managerId: user.id,
+    );
+    if (!mounted) return expiresAt != null;
+    _scheduleDetailEditExpiry(expiresAt);
+    setState(() {
+      _detailEditExpiresAt = expiresAt;
+      _canEditDetails = expiresAt != null;
+      _detailEditAccessLoading = false;
+    });
+    return expiresAt != null;
+  }
+
+  void _scheduleDetailEditExpiry(DateTime? expiresAt) {
+    _detailEditExpiryTimer?.cancel();
+    if (expiresAt == null) return;
+
+    final remaining = expiresAt.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      _lockDetailEditing();
+      return;
+    }
+
+    _detailEditExpiryTimer = Timer(remaining, _lockDetailEditing);
+  }
+
+  void _lockDetailEditing() {
+    if (!mounted) return;
+    setState(() {
+      _canEditDetails = false;
+      _detailEditExpiresAt = null;
+      _detailEditAccessLoading = false;
+      _nameCtrl.text = widget.club.name;
+      _descCtrl.text = widget.club.description;
+    });
+  }
+
+  Future<void> _requestDetailEditAccess() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null || _requestingDetailEdit) return;
+
+    final confirmed = await showConfirmActionDialog(
+      context,
+      title: 'Request club detail edit?',
+      message: 'Send a request to the university admin to temporarily unlock '
+          'editing for the club name and description?',
+      confirmLabel: 'Send request',
+      icon: Icons.send_rounded,
+    );
+    if (!confirmed) return;
+
+    setState(() => _requestingDetailEdit = true);
+    try {
+      final result = await _detailEditRequests.requestEditAccess(
+        club: widget.club,
+        manager: user,
+      );
+      if (!mounted) return;
+      final message = switch (result) {
+        ClubDetailEditRequestResult.requested =>
+          'Edit request sent to university admin.',
+        ClubDetailEditRequestResult.alreadyPending =>
+          'Edit request reminder sent to university admin.',
+        ClubDetailEditRequestResult.noAdmins =>
+          'No university admin account was found.',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send edit request: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _requestingDetailEdit = false);
+    }
   }
 
   Future<void> _rememberClubMedia({
@@ -261,6 +373,24 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
 
     var backgroundVideoUrl = _backgroundVideoCtrl.text.trim();
     var backgroundMusicUrl = _musicCtrl.text.trim();
+    var canSaveDetails = _canEditDetails;
+    if (_canEditDetails) {
+      canSaveDetails = await _loadDetailEditAccess();
+      final detailsChanged = _nameCtrl.text.trim() != widget.club.name ||
+          _descCtrl.text.trim() != widget.club.description;
+      if (!canSaveDetails && detailsChanged) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Club details edit permission expired.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          setState(() => _saving = false);
+        }
+        return;
+      }
+    }
 
     try {
       if (_pendingBackgroundVideoFile != null) {
@@ -286,8 +416,9 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
 
     final updated = ClubModel(
       id: widget.club.id,
-      name: _nameCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
+      name: canSaveDetails ? _nameCtrl.text.trim() : widget.club.name,
+      description:
+          canSaveDetails ? _descCtrl.text.trim() : widget.club.description,
       category: widget.club.category,
       logoColor: _logoColor,
       logoImageBase64: _logoImage == null ? '' : base64Encode(_logoImage!),
@@ -379,6 +510,11 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
               _ClubDetailsCard(
                 nameCtrl: _nameCtrl,
                 descCtrl: _descCtrl,
+                canEdit: _canEditDetails,
+                loading: _detailEditAccessLoading,
+                requesting: _requestingDetailEdit,
+                permissionExpiresAt: _detailEditExpiresAt,
+                onRequestEdit: _requestDetailEditAccess,
               ),
 
               const SizedBox(height: 18),

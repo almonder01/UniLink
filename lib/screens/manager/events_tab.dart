@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/club.dart';
 import '../../models/event.dart';
 import '../../services/event_service.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/event_card.dart';
 import '../student/event_detail_screen.dart';
 import 'create_event_screen.dart';
@@ -41,25 +42,15 @@ class EventsTabState extends State<EventsTab> {
   }
 
   Future<void> _deleteEvent(EventModel event) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Event'),
-        content: const Text('This event will be permanently removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await showConfirmActionDialog(
+      context,
+      title: 'Delete Event',
+      message: 'This event will be permanently removed.',
+      confirmLabel: 'Delete',
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
 
     try {
       await EventService().deleteEvent(event.id);

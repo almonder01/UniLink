@@ -12,7 +12,7 @@ UniLink has three main roles:
 
 - Student: can browse clubs, follow clubs, request membership, register for events, save posts, comment, like, chat, receive notifications, and manage profile/privacy settings.
 - Club manager: can edit the club profile, create posts and events, manage event registrations, manage club members, send invitations, manage club chat rooms, and review payment/receipt information.
-- University admin: can manage users and clubs from the admin dashboard, including editing club names and categories.
+- University admin: can manage users and clubs from the admin dashboard, including editing club names and categories, messaging users, and granting or locking club detail edit permission for club managers.
 
 The app is designed around reusable feature folders. Data models live in `lib/models/`, business logic and Firebase access live in `lib/services/`, shared state lives in `lib/providers/`, screens live in `lib/screens/`, and reusable UI lives in `lib/widgets/`.
 
@@ -23,7 +23,7 @@ Use these captions under the screenshots in the final report. They cover the ful
 1. Splash screen showing the animated UniLink entry point before navigation.
 2. Login screen showing Firebase authentication access.
 3. Sign-up screen showing account creation and gender profile selection.
-4. Home screen showing paginated upcoming events and recent club posts loaded from Firestore.
+4. Home screen showing paginated upcoming events, recent club posts, shared search, and collapsible filters loaded from Firestore.
 5. Home screen showing the Load More controls for posts and events.
 6. Clubs screen showing available clubs, follower status, and club cards.
 7. Club detail screen showing cover image, logo, follower count, posts, events, members, followers, and photos.
@@ -47,7 +47,7 @@ Use these captions under the screenshots in the final report. They cover the ful
 25. My Club profile tab showing club logo, cover, about text, gallery, logo background controls, and club experience controls.
 26. Club Experience editor showing YouTube or uploaded background video and optional background music.
 27. Media Library screen showing saved videos and saved music for reuse.
-28. Media attachment widget showing the choice between YouTube URL, uploaded video, MP3/audio source, auto-open video, and auto-play music.
+28. Media attachment widget showing collapsible Video and Music sections, YouTube URL, uploaded video, MP3/audio source, auto-open video, and auto-play music.
 29. Manager posts tab showing post cards with spacing, edit, delete, and media library access.
 30. Manager events tab showing event cards, create/edit actions, and the event dashboard entry point.
 31. Event dashboard overview showing planned, active, and finished event filters.
@@ -57,8 +57,12 @@ Use these captions under the screenshots in the final report. They cover the ful
 35. Membership request dashboard showing approve, reject, and payment request actions.
 36. Club payment dashboard showing monthly fee requests, receipt status, and statistics.
 37. Notifications screen showing event, post, room invite, payment, membership, and chat notifications.
-38. Admin dashboard showing system-level club and user management.
-39. Admin club editor showing name and category editing with existing or custom category input.
+38. Notifications screen showing a club detail edit request with a Grant action that remains visible after reading and disappears only after approval.
+39. Admin dashboard showing system-level club and user management.
+40. Admin users tab showing the themed three-dot action menu with message, grant/lock edit permission, and remove user actions.
+41. Admin grant edit permission dialog showing temporary minutes or permanent access selection.
+42. My Requests screen showing club detail edit request tracking for the club manager.
+43. Admin club editor showing name and category editing with existing or custom category input.
 
 ## 4. Feature 1 - Map Integration
 
@@ -128,7 +132,7 @@ The app normally displays a thumbnail or preview first, then opens playback when
 
 ### How It Was Built
 
-The reusable media form is implemented in `lib/widgets/media_attachment_fields.dart`. Post and event publishing also use `lib/widgets/publish_media_attachment_fields.dart`, which wraps the shared media fields with the auto-open video and auto-play music switches. Student detail pages use shared content media widgets so post and event media render consistently. The app uses:
+The reusable media form is implemented in `lib/widgets/media_attachment_fields.dart`. Post and event publishing also use `lib/widgets/publish_media_attachment_fields.dart`, which wraps the shared media fields with the auto-open video and auto-play music switches. The same media widget is used by create/edit post, create/edit event, manager Media Library, and the club profile experience editor, so the Video and Music sections open and collapse consistently across those screens. Student detail pages use shared content media widgets so post and event media render consistently. The app uses:
 
 - `youtube_player_flutter` for YouTube playback inside the app.
 - `file_picker` for selecting audio/video files.
@@ -191,6 +195,14 @@ Line-by-line explanation:
 - `_assets.doc(id).get()` checks whether the same asset was saved before.
 - `if (doc.exists) return;` prevents duplicate media records from being created.
 
+### Shared Media UI
+
+The final version reduces repeated media code by using shared widgets for related post, event, media-library, and club profile media flows. `media_attachment_fields.dart` provides the core URL/file selection controls and the collapsible Video/Music sections. `publish_media_attachment_fields.dart` adds post and event auto-open video and auto-play music controls. `content_media_section.dart` and `content_auto_media_launcher.dart` keep post and event media display behavior consistent on the viewing side. This makes the multimedia feature easier to maintain because the same interaction pattern is reused instead of being duplicated in each screen.
+
+### Search and Filtering UI
+
+The Home screen supports searching across event and post content, including titles, descriptions, club names, event location/date text, and media indicators such as video or music. The search field is implemented as a reusable `AppSearchField` widget and reused in other list-heavy screens. Home filters are grouped in a collapsible filter panel so students can refine results by content type, date range, and media type without permanently taking space from the feed.
+
 ## 6. Feature 3 - Data Persistence
 
 ### What the Feature Does
@@ -241,6 +253,19 @@ Line-by-line explanation:
 
 Direct chats, club room messages, notifications, comments, and dashboard data use asynchronous Firestore reads or realtime streams. This means the UI can update when data changes without manual refresh. The app also uses Firestore counters and transactions in event registration and membership management so counts remain consistent.
 
+### Club Detail Edit Permission Workflow
+
+Club name and description editing is protected so a club manager cannot change these identity fields freely. The manager can send a request from the locked Club Details card in the club profile editor. University admins receive a notification with a Grant action, and the admin users tab also provides a themed three-dot menu where admins can grant temporary or permanent edit permission directly.
+
+The workflow uses two Firestore-backed collections:
+
+- `club_detail_edit_requests` stores each manager request, status, timestamps, granted duration, and the related club and manager ids.
+- `club_detail_edit_permissions` stores active manager permissions under the target club. The app checks the permission expiry before allowing the manager to save club name or description changes.
+
+When an admin grants access, the manager receives a notification explaining whether access is permanent or how many minutes it lasts. If an admin locks the details again, the manager receives a lock notification. The manager profile area also shows the request history in My Requests, so the manager can track whether the request is pending, granted, or locked.
+
+Notification action state is separated from read state. Reading a request notification only changes `is_read`; accepting the request writes `action_completed`. This keeps the Grant button visible after the notification is opened, but hides it after the request is actually approved.
+
 ## 7. Important Firebase Configuration Notes
 
 The latest code uses the following important collections:
@@ -253,6 +278,8 @@ The latest code uses the following important collections:
 - `club_membership_requests`
 - `club_payment_requests`
 - `club_payment_receipts`
+- `club_detail_edit_requests`
+- `club_detail_edit_permissions`
 - `posts`
 - `posts/{postId}/comments`
 - `events`
@@ -264,7 +291,7 @@ The latest code uses the following important collections:
 - `direct_chats/{chatId}/messages`
 - `media_assets`
 
-If Firestore security rules do not include `media_assets`, the Media Library will not be able to save or rename reusable videos/music. If rules do not include `club_membership_requests`, the membership request workflow will not persist correctly. These two collections should be checked before final deployment.
+If Firestore security rules do not include `media_assets`, the Media Library will not be able to save or rename reusable videos/music. If rules do not include `club_membership_requests`, the membership request workflow will not persist correctly. The final rules also include `club_detail_edit_requests` and `club_detail_edit_permissions` so club identity edits can be requested, granted, expired, and revoked safely.
 
 Cloudinary is used only for uploaded video/audio storage. The mobile app stores the returned URL in Firestore. Secure deletion from Cloudinary is not implemented in the mobile app because that should be done through a backend service.
 
@@ -324,9 +351,22 @@ The final codebase is organized for maintenance:
 - Event card sub-widgets are under `lib/widgets/event_card/`.
 - Media attachment sub-widgets are under `lib/widgets/media_attachment/`.
 - Shared post/event media widgets are under `lib/widgets/content_media_section.dart`, `lib/widgets/content_auto_media_launcher.dart`, and `lib/widgets/publish_media_attachment_fields.dart`.
+- Home search and filtering pieces are under `lib/widgets/app_search_field.dart` and `lib/screens/student/home/home_filter_bar.dart`.
+
+Additional shared UI and service components were added for the final version:
+
+- `lib/widgets/confirm_action_dialog.dart` centralizes confirmation dialogs used by manager and admin flows.
+- `lib/widgets/app_search_field.dart` centralizes the themed search input used by Home, club discovery, saved posts, and admin lists.
+- `lib/services/club_detail_edit_request_service.dart` centralizes club detail edit request, grant, revoke, and manager notification logic.
+- `lib/screens/admin/widgets/users_tab.dart` now uses a themed three-dot action menu for message, grant/lock edit permission, and remove actions.
+- `lib/widgets/media_attachment_fields.dart`, `lib/widgets/media_auto_option_switch.dart`, `lib/widgets/content_media_section.dart`, `lib/widgets/content_auto_media_launcher.dart`, and `lib/widgets/publish_media_attachment_fields.dart` keep media controls consistent across club, post, event, and media-library screens.
 
 This structure supports the "divide and maintain" approach: each class or widget has a narrower purpose, repeated UI is extracted, and feature-specific components are grouped near the screen that uses them.
 
-## 10. Conclusion
+## 10. Final Readiness Notes
 
-UniLink now includes a complete club engagement workflow: discovery, following, membership requests, event registration, dashboards, payments, posts, multimedia, chats, room invitations, profile controls, and admin management. The three compulsory requirements are implemented as real app features rather than isolated demos. Maps are used for event venues, multimedia is used across posts/events/clubs, and Firestore persists user and manager activity throughout the application.
+The current code is suitable for academic submission and demo deployment after Firebase rules and Cloudinary configuration are deployed. Static analysis passes with no issues. For a public production release, the Android package id should be changed from the default `com.example.unilink`, a real release signing key should replace debug signing, iOS Firebase configuration should be added if the iOS target will be shipped, and the main realtime flows should be retested on real devices with production Firebase rules.
+
+## 11. Conclusion
+
+UniLink now includes a complete club engagement workflow: discovery, searchable and filterable feeds, following, membership requests, event registration, dashboards, payments, posts, multimedia, chats, room invitations, profile controls, request tracking, protected club detail editing, and admin management. The three compulsory requirements are implemented as real app features rather than isolated demos. Maps are used for event venues, multimedia is used across posts/events/clubs, and Firestore persists user, manager, and admin activity throughout the application.

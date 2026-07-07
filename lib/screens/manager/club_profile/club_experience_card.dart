@@ -49,15 +49,27 @@ class _ClubExperienceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Club Experience',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choose what visitors can see on the club page.',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.58),
+              ),
+            ),
+            const SizedBox(height: 8),
             MediaAttachmentFields(
-              title: 'Club Experience',
-              subtitle: 'Choose what visitors can see on the club page.',
               youtubeVideoController: backgroundVideoCtrl,
               directVideoController: backgroundVideoCtrl,
               videoType: backgroundVideoType,
@@ -72,9 +84,11 @@ class _ClubExperienceCard extends StatelessWidget {
               onAudioTypeChanged: onMusicTypeChanged,
               onPickAudio: onUploadMusic,
               pendingAudioName: pendingMusicName,
+              audioAssets: audioAssets,
+              selectedAudioUrl: musicCtrl.text.trim(),
+              onAudioAssetSelected: onAudioAssetSelected,
               videoPreviewTitle: 'Club background preview',
               audioPreviewTitle: 'Club music preview',
-              showAudio: false,
               wrapInCard: false,
               compactPreviews: true,
               videoOptions: [
@@ -86,43 +100,17 @@ class _ClubExperienceCard extends StatelessWidget {
                   icon: Icons.ondemand_video_rounded,
                 ),
               ],
-            ),
-            _ExperienceExpansion(
-              icon: Icons.music_note_rounded,
-              title: 'Background music',
-              children: [
-                MediaAttachmentFields(
-                  youtubeVideoController: backgroundVideoCtrl,
-                  directVideoController: backgroundVideoCtrl,
-                  videoType: backgroundVideoType,
-                  onVideoTypeChanged: onBackgroundVideoTypeChanged,
-                  onPickVideo: onUploadBackgroundVideo,
-                  pendingVideoName: pendingBackgroundVideoName,
-                  audioController: musicCtrl,
-                  audioType: musicType,
-                  onAudioTypeChanged: onMusicTypeChanged,
-                  onPickAudio: onUploadMusic,
-                  pendingAudioName: pendingMusicName,
-                  audioAssets: audioAssets,
-                  selectedAudioUrl: musicCtrl.text.trim(),
-                  onAudioAssetSelected: onAudioAssetSelected,
-                  videoPreviewTitle: 'Club background preview',
-                  audioPreviewTitle: 'Club music preview',
-                  showVideo: false,
-                  wrapInCard: false,
-                  compactPreviews: true,
-                  audioOptions: [
-                    MediaAutoOptionSwitch(
-                      value: musicAutoPlay,
-                      onChanged: onMusicAutoPlayChanged,
-                      title: 'Auto-play music',
-                      subtitle: 'Only if the student allows club music',
-                      icon: Icons.music_note_rounded,
-                    ),
-                  ],
+              audioOptions: [
+                MediaAutoOptionSwitch(
+                  value: musicAutoPlay,
+                  onChanged: onMusicAutoPlayChanged,
+                  title: 'Auto-play music',
+                  subtitle: 'Only if the student allows club music',
+                  icon: Icons.music_note_rounded,
                 ),
               ],
             ),
+            const SizedBox(height: 8),
             _ExperienceExpansion(
               icon: Icons.auto_awesome_rounded,
               title: 'Feature area',

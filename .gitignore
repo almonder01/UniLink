@@ -52,4 +52,6 @@ Reports/*
 !Reports/UniLink_Academic_Report.docx
 !Reports/UniLink_Academic_Report_Text.md
 !Reports/UniLink_Academic_Report_Updated.docx
+!Reports/UniLink_Academic_Report_Final.docx
 !Reports/build_unilink_academic_report.py
+!Reports/build_unilink_final_report.py

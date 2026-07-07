@@ -23,6 +23,34 @@ class NotificationService {
   Future<void> markRead(String userId, String notifId) =>
       _col(userId).doc(notifId).update({'is_read': true});
 
+  Future<void> markActionCompleted(String userId, String notifId) =>
+      _col(userId).doc(notifId).update({
+        'is_read': true,
+        'action_completed': true,
+      });
+
+  Future<void> markMatchingActionsCompleted({
+    required String userId,
+    required String type,
+    required String refId,
+  }) async {
+    final snap = await _col(userId).where('type', isEqualTo: type).get();
+    final matches = snap.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return data['ref_id'] == refId;
+    }).toList();
+    if (matches.isEmpty) return;
+
+    final batch = _db.batch();
+    for (final doc in matches) {
+      batch.update(doc.reference, {
+        'is_read': true,
+        'action_completed': true,
+      });
+    }
+    await batch.commit();
+  }
+
   Future<void> markAllRead(String userId) async {
     final unread = await _col(userId).where('is_read', isEqualTo: false).get();
     if (unread.docs.isEmpty) return;
@@ -31,6 +59,27 @@ class NotificationService {
       batch.update(doc.reference, {'is_read': true});
     }
     await batch.commit();
+  }
+
+  Future<void> sendToUser({
+    required String userId,
+    required String title,
+    required String body,
+    required String type,
+    required String color,
+    required String clubId,
+    String? refId,
+  }) async {
+    await _col(userId).add({
+      'title': title,
+      'body': body,
+      'type': type,
+      'color': color,
+      'club_id': clubId,
+      'ref_id': refId,
+      'time': FieldValue.serverTimestamp(),
+      'is_read': false,
+    });
   }
 
   /// Writes a notification to every user who follows [clubId].

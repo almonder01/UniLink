@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/club.dart';
 import '../../models/post.dart';
 import '../../services/database_service.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/post_card.dart';
 import '../student/post_detail_screen.dart';
 import 'create_post_screen.dart';
@@ -41,25 +42,15 @@ class PostsTabState extends State<PostsTab> {
   }
 
   Future<void> _deletePost(PostModel post) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Post'),
-        content: const Text('This post will be permanently removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await showConfirmActionDialog(
+      context,
+      title: 'Delete Post',
+      message: 'This post will be permanently removed.',
+      confirmLabel: 'Delete',
+      icon: Icons.delete_outline_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
 
     await DatabaseService().deletePost(post.id);
     if (!mounted) return;

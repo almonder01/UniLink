@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/notification_provider.dart';
 import '../student/clubs_screen.dart';
+import '../student/notifications_screen.dart';
 import '../student/profile_screen.dart';
 import 'admin_dashboard_screen.dart';
 
@@ -15,8 +19,11 @@ class _AdminShellState extends State<AdminShell> {
 
   @override
   Widget build(BuildContext context) {
+    final hasUnreadNotifications =
+        context.watch<NotificationProvider>().unreadCount > 0;
     final screens = [
       const AdminDashboardScreen(),
+      const NotificationsScreen(),
       const ClubsScreen(),
       const ProfileScreen(),
     ];
@@ -36,18 +43,29 @@ class _AdminShellState extends State<AdminShell> {
         child: NavigationBar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-          destinations: const [
-            NavigationDestination(
+          destinations: [
+            const NavigationDestination(
               icon: Icon(Icons.dashboard_outlined),
               selectedIcon: Icon(Icons.dashboard_rounded),
               label: 'Dashboard',
             ),
             NavigationDestination(
+              icon: _NavIconWithDot(
+                icon: Icons.notifications_outlined,
+                showDot: hasUnreadNotifications,
+              ),
+              selectedIcon: _NavIconWithDot(
+                icon: Icons.notifications_rounded,
+                showDot: hasUnreadNotifications,
+              ),
+              label: 'Alerts',
+            ),
+            const NavigationDestination(
               icon: Icon(Icons.groups_outlined),
               selectedIcon: Icon(Icons.groups_rounded),
               label: 'Clubs',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),
               label: 'Profile',
@@ -55,6 +73,41 @@ class _AdminShellState extends State<AdminShell> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NavIconWithDot extends StatelessWidget {
+  final IconData icon;
+  final bool showDot;
+
+  const _NavIconWithDot({
+    required this.icon,
+    required this.showDot,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(icon),
+        if (showDot)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6),
+                shape: BoxShape.circle,
+                border: Border.all(color: cs.surface, width: 1.5),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

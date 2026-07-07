@@ -28,6 +28,7 @@ class DirectChatService {
   }) async {
     final targetId = target['uid'] as String? ?? '';
     if (targetId.isEmpty || targetId == currentUser.id) return false;
+    if (currentUser.role == 'admin') return true;
     final privacy = target['messagePrivacy'] as String? ?? 'everyone';
     if (privacy != 'club_members') return true;
 

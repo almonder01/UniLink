@@ -8,6 +8,7 @@ import '../../models/club_room.dart';
 import '../../models/user.dart';
 import '../../services/club_room_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/confirm_action_dialog.dart';
 
 part 'club_room_dashboard/room_avatar.dart';
 part 'club_room_dashboard/room_dashboard_tile.dart';

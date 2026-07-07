@@ -40,10 +40,28 @@ service cloud.firestore {
       return get(clubPath(clubId));
     }
 
+    function clubDetailEditPermissionPath(clubId, uid) {
+      return /databases/$(database)/documents/club_detail_edit_permissions/$(clubId)/managers/$(uid);
+    }
+
     function isClubManager(clubId) {
       return signedIn()
         && hasClub(clubId)
         && clubDoc(clubId).data.manager_id == request.auth.uid;
+    }
+
+    function hasActiveClubDetailEditPermission(clubId) {
+      return signedIn()
+        && exists(clubDetailEditPermissionPath(clubId, request.auth.uid))
+        && get(clubDetailEditPermissionPath(clubId, request.auth.uid))
+          .data.expires_at > request.time;
+    }
+
+    function clubIdentityDetailsUnchanged() {
+      return !request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasAny(['name', 'description']);
     }
 
     function participantOfChat(chatId) {
@@ -63,7 +81,14 @@ service cloud.firestore {
     match /clubs/{clubId} {
       allow read: if signedIn();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || isClubManager(clubId);
+      allow update: if isAdmin()
+        || (
+          isClubManager(clubId)
+          && (
+            clubIdentityDetailsUnchanged()
+            || hasActiveClubDetailEditPermission(clubId)
+          )
+        );
     }
 
     match /user_follows/{uid} {
@@ -167,6 +192,32 @@ service cloud.firestore {
       allow create, update: if signedIn()
         && request.resource.data.user_id == request.auth.uid;
       allow delete: if isAdmin() || isClubManager(resource.data.club_id);
+    }
+
+    match /club_detail_edit_requests/{requestId} {
+      allow get: if signedIn();
+      allow list: if signedIn();
+      allow create: if isAdmin()
+        || (
+          signedIn()
+        && request.resource.data.manager_id == request.auth.uid
+          && isClubManager(request.resource.data.club_id)
+        );
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.manager_id == request.auth.uid
+          && request.resource.data.manager_id == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && isClubManager(request.resource.data.club_id)
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /club_detail_edit_permissions/{clubId}/managers/{managerId} {
+      allow read: if signedIn()
+        && (request.auth.uid == managerId || isAdmin() || isClubManager(clubId));
+      allow create, update, delete: if isAdmin();
     }
 
     match /{document=**} {

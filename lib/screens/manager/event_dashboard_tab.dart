@@ -8,6 +8,7 @@ import '../../models/event_registration.dart';
 import '../../services/event_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/confirm_action_dialog.dart';
 
 part 'event_dashboard/event_stage_filter.dart';
 part 'event_dashboard/event_filter.dart';

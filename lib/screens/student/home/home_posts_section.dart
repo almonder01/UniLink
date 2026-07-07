@@ -6,6 +6,7 @@ class _HomePostsSection extends StatelessWidget {
   final bool isLoadingMore;
   final bool isInitialLoading;
   final bool hasAnyClubContext;
+  final bool isSearching;
   final String userId;
   final Set<String> savedPostIds;
   final VoidCallback onLoadMore;
@@ -22,6 +23,7 @@ class _HomePostsSection extends StatelessWidget {
     required this.isLoadingMore,
     required this.isInitialLoading,
     required this.hasAnyClubContext,
+    required this.isSearching,
     required this.userId,
     required this.savedPostIds,
     required this.onLoadMore,
@@ -40,7 +42,11 @@ class _HomePostsSection extends StatelessWidget {
       children: [
         const SizedBox(height: 20),
         Text(
-          hasAnyClubContext ? 'From your clubs' : 'Discover clubs',
+          isSearching
+              ? 'Matching Posts'
+              : hasAnyClubContext
+                  ? 'From your clubs'
+                  : 'Discover clubs',
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
@@ -50,7 +56,7 @@ class _HomePostsSection extends StatelessWidget {
             child: Center(child: CircularProgressIndicator()),
           )
         else if (posts.isEmpty)
-          _EmptyFeed()
+          _EmptyFeed(isSearching: isSearching)
         else ...[
           ...posts.map(
             (post) => Padding(

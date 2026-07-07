@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../screens/chat/direct_chat_screen.dart';
 import '../../services/club_membership_service.dart';
 import '../../services/direct_chat_service.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/identity_avatar.dart';
 import 'manager_action_banner.dart';
 import 'membership_requests_screen.dart';
@@ -184,25 +185,15 @@ class MembersTabState extends State<MembersTab> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove Member'),
-        content: Text('Remove ${member['name']} from ${widget.club.name}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirm = await showConfirmActionDialog(
+      context,
+      title: 'Remove Member',
+      message: 'Remove ${member['name']} from ${widget.club.name}?',
+      confirmLabel: 'Remove',
+      icon: Icons.person_remove_alt_1_rounded,
+      confirmColor: Colors.red,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
 
     try {
       await _membershipService.removeMember(
