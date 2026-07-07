@@ -107,7 +107,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
-          'Assign Manager — ${club['name']}',
+          'Assign Manager to  ${club['name']}',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -146,7 +146,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 return;
               }
 
-              final userDoc  = query.docs.first;
+              final userDoc = query.docs.first;
               final userName =
                   userDoc['name'] as String? ?? email.split('@').first;
 
@@ -167,6 +167,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 return;
               }
 
+              // Check if THIS club already has a manager → unassign them first
+              final currentManagerId = club['manager_id'] as String?;
+              final currentManagerName = club['manager_name'] as String?;
+
+              if (currentManagerId != null && currentManagerId.isNotEmpty) {
+                if (!mounted) return;
+                final confirmed = await showConfirmActionDialog(
+                  context,
+                  title: 'Replace Manager',
+                  message: '"${club['name']}" is currently managed by '
+                      '$currentManagerName. Replace them with $userName?',
+                  confirmLabel: 'Replace',
+                  icon: Icons.swap_horiz_rounded,
+                  confirmColor: Colors.orange,
+                );
+                if (!confirmed) return;
+
+                await _db.collection('profiles').doc(currentManagerId).update({
+                  'role': 'student',
+                  'managed_club_id': FieldValue.delete(),
+                });
+              }
               // Update user role → manager
               await _db.collection('profiles').doc(userDoc.id).update({
                 'role': 'manager',
@@ -179,8 +201,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   .update({'manager_id': userDoc.id, 'manager_name': userName});
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(
-                    '$userName assigned as manager of ${club['name']}'),
+                content:
+                    Text('$userName assigned as manager of ${club['name']}'),
                 behavior: SnackBarBehavior.floating,
               ));
             },
