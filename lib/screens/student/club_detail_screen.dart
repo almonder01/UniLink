@@ -15,10 +15,14 @@ import '../../services/direct_chat_service.dart';
 import '../../services/event_service.dart';
 import '../../services/membership_request_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/club_audio_player.dart';
+import '../../widgets/direct_video_preview.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_gallery.dart';
 import '../../widgets/post_card.dart';
+import '../../widgets/video_media_preview.dart';
+import '../../widgets/youtube_video_preview.dart';
 import 'event_detail_screen.dart';
 import 'post_detail_screen.dart';
 import 'widgets/event_registration_dialog.dart';
@@ -51,6 +55,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   List<Map<String, dynamic>> _visibleFollowers = [];
   int _followerCount = 0;
   bool _canUseRooms = false;
+  bool _loadingData = true;
+  bool _openedBackgroundPreview = false;
   String? _membershipRequestStatus;
   final _membershipService = ClubMembershipService();
   final _roomService = ClubRoomService();
@@ -70,38 +76,58 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   }
 
   Future<void> _loadData() async {
-    final userId = context.read<AuthProvider>().currentUser?.id;
-    final posts = await DatabaseService().getPostsByClub(widget.club.id);
-    final events =
-        await EventService().getEventsByClub(widget.club.id, userId: userId);
-    final members = await _loadVisibleMembers();
-    final followers = await _membershipService.followerProfilesForClub(
-      widget.club.id,
-      publicOnly: false,
-    );
-    final visibleFollowers = followers
-        .where((follower) => follower['showInClubFollowers'] != false)
-        .toList();
-    final isManager = userId != null && userId == widget.club.managerId;
-    final canUseRooms = isManager ||
-        (userId != null &&
-            await _membershipService.isMember(widget.club.id, userId));
-    final membershipRequest = userId == null || canUseRooms
-        ? null
-        : await MembershipRequestService().getRequest(
-            clubId: widget.club.id,
-            userId: userId,
-          );
-    if (mounted) {
-      setState(() {
-        _posts = posts;
-        _events = events;
-        _visibleMembers = members;
-        _visibleFollowers = visibleFollowers;
-        _followerCount = followers.length;
-        _canUseRooms = canUseRooms;
-        _membershipRequestStatus = membershipRequest?.status;
-      });
+    setState(() => _loadingData = true);
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      final isManager = userId != null && userId == widget.club.managerId;
+      final postsFuture = DatabaseService().getPostsByClub(widget.club.id);
+      final eventsFuture =
+          EventService().getEventsByClub(widget.club.id, userId: userId);
+      final membersFuture = _loadVisibleMembers();
+      final followersFuture = _membershipService.followerProfilesForClub(
+        widget.club.id,
+        publicOnly: false,
+      );
+      final isMemberFuture = userId == null || isManager
+          ? Future.value(false)
+          : _membershipService.isMember(widget.club.id, userId);
+
+      final posts = await postsFuture;
+      final events = await eventsFuture;
+      final members = await membersFuture;
+      final followers = await followersFuture;
+      final isMember = await isMemberFuture;
+      final visibleFollowers = followers
+          .where((follower) => follower['showInClubFollowers'] != false)
+          .toList();
+      final canUseRooms = isManager || (userId != null && isMember);
+      final membershipRequest = userId == null || canUseRooms
+          ? null
+          : await MembershipRequestService().getRequest(
+              clubId: widget.club.id,
+              userId: userId,
+            );
+      if (mounted) {
+        setState(() {
+          _posts = posts;
+          _events = events;
+          _visibleMembers = members;
+          _visibleFollowers = visibleFollowers;
+          _followerCount = followers.length;
+          _canUseRooms = canUseRooms;
+          _membershipRequestStatus = membershipRequest?.status;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load club details: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingData = false);
     }
   }
 
@@ -289,9 +315,43 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   @override
   Widget build(BuildContext context) {
     final userId = context.read<AuthProvider>().currentUser?.id ?? '';
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final autoOpenClubVideos = currentUser?.autoOpenClubVideos ??
+        currentUser?.showClubBackgroundMedia ??
+        true;
+    final autoPlayClubMusic = currentUser?.autoPlayClubMusic ??
+        currentUser?.showClubBackgroundMedia ??
+        true;
     final followProvider = context.watch<ClubFollowProvider>();
     final isFollowed = followProvider.isFollowing(userId, widget.club.id);
     final clubColor = Color(int.parse(widget.club.logoColor, radix: 16));
+    if (autoOpenClubVideos &&
+        widget.club.backgroundVideoAutoOpen &&
+        !_openedBackgroundPreview &&
+        (widget.club.backgroundVideoUrl ?? '').trim().isNotEmpty) {
+      _openedBackgroundPreview = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final url = widget.club.backgroundVideoUrl!.trim();
+        if (widget.club.backgroundVideoType == 'youtube' ||
+            youtubeVideoIdFromUrl(url) != null) {
+          showYouTubePreviewDialog(
+            context,
+            url: url,
+            title: '${widget.club.name} background',
+          );
+        } else {
+          showDirectVideoDialog(
+            context,
+            url: url,
+            title: '${widget.club.name} background',
+          );
+        }
+      });
+    }
+    final showAudioBar =
+        (widget.club.backgroundMusicUrl ?? '').trim().isNotEmpty &&
+            widget.club.backgroundMusicType != 'youtube';
     return Scaffold(
       floatingActionButton: _canUseRooms
           ? GestureDetector(
@@ -303,46 +363,73 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               ),
             )
           : null,
-      body: NestedScrollView(
-        headerSliverBuilder: (_, __) => _ClubDetailHeaderSlivers(
-          club: widget.club,
-          clubColor: clubColor,
-          isFollowed: isFollowed,
-          onFollow: () => followProvider.follow(userId, widget.club.id),
-          onUnfollow: () => followProvider.unfollow(userId, widget.club.id),
-          followerCount: _followerCount,
-          postCount: _posts.length,
-          eventCount: _events.length,
-          tabCtrl: _tabCtrl,
-        ).build(context),
-        body: TabBarView(
-          controller: _tabCtrl,
-          children: [
-            _AboutTab(club: widget.club, clubColor: clubColor),
-            _PostsTab(posts: _posts, onShare: _sharePost),
-            _EventsTab(
-              events: _events,
-              onRegister: _registerForEvent,
-              onShare: _shareEvent,
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (_, __) => _ClubDetailHeaderSlivers(
+              club: widget.club,
+              clubColor: clubColor,
+              isFollowed: isFollowed,
+              onFollow: () => followProvider.follow(userId, widget.club.id),
+              onUnfollow: () => followProvider.unfollow(userId, widget.club.id),
+              followerCount: _followerCount,
+              postCount: _posts.length,
+              eventCount: _events.length,
+              tabCtrl: _tabCtrl,
+            ).build(context),
+            body: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                _AboutTab(
+                  club: widget.club,
+                  clubColor: clubColor,
+                ),
+                _PostsTab(posts: _posts, onShare: _sharePost),
+                _EventsTab(
+                  events: _events,
+                  onRegister: _registerForEvent,
+                  onShare: _shareEvent,
+                ),
+                _PeopleTab(
+                  people: _visibleMembers,
+                  emptyMessage: 'No public members yet',
+                  onMessage: _openDirectChat,
+                  header: _canUseRooms
+                      ? null
+                      : _MembershipRequestBanner(
+                          status: _membershipRequestStatus,
+                          onRequest: _requestMembership,
+                        ),
+                ),
+                _PeopleTab(
+                  people: _visibleFollowers,
+                  emptyMessage: 'No public followers yet',
+                  onMessage: _openDirectChat,
+                ),
+              ],
             ),
-            _PeopleTab(
-              people: _visibleMembers,
-              emptyMessage: 'No public members yet',
-              onMessage: _openDirectChat,
-              header: _canUseRooms
-                  ? null
-                  : _MembershipRequestBanner(
-                      status: _membershipRequestStatus,
-                      onRequest: _requestMembership,
-                    ),
+          ),
+          if (_loadingData)
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: LinearProgressIndicator(minHeight: 2),
             ),
-            _PeopleTab(
-              people: _visibleFollowers,
-              emptyMessage: 'No public followers yet',
-              onMessage: _openDirectChat,
+          if (showAudioBar)
+            Positioned(
+              left: 12,
+              right: _canUseRooms ? 86 : 12,
+              bottom: 10 + MediaQuery.paddingOf(context).bottom,
+              child: ClubAudioPlayer(
+                url: widget.club.backgroundMusicUrl!.trim(),
+                title: '${widget.club.name} music',
+                autoPlay:
+                    autoPlayClubMusic && widget.club.backgroundMusicAutoPlay,
+                compact: true,
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

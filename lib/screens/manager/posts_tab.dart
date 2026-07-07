@@ -5,6 +5,8 @@ import '../../services/database_service.dart';
 import '../../widgets/post_card.dart';
 import '../student/post_detail_screen.dart';
 import 'create_post_screen.dart';
+import 'manager_action_banner.dart';
+import 'media_library_screen.dart';
 import 'menu_tile.dart';
 import 'popup_menu_position.dart';
 import 'three_dot_button.dart';
@@ -92,6 +94,15 @@ class PostsTabState extends State<PostsTab> {
     if (result != null) _loadPosts();
   }
 
+  Future<void> _openMediaLibrary() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MediaLibraryScreen(club: widget.club),
+      ),
+    );
+  }
+
   void _showPostMenu(BuildContext anchorContext, PostModel post) {
     showMenu<String>(
       context: anchorContext,
@@ -116,26 +127,46 @@ class PostsTabState extends State<PostsTab> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    if (_posts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline_rounded,
-                size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
-            const SizedBox(height: 12),
-            Text('No posts yet. Tap + to create one.',
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
-          ],
-        ),
-      );
-    }
-
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _posts.length,
+      itemCount: _posts.isEmpty ? 2 : _posts.length + 1,
       itemBuilder: (ctx, i) {
-        final post = _posts[i];
+        if (i == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ManagerActionBanner(
+              icon: Icons.perm_media_rounded,
+              title: 'Media Library',
+              subtitle: 'Reuse uploaded videos and music links',
+              tooltip: 'Open media library',
+              onPressed: _openMediaLibrary,
+              padding: EdgeInsets.zero,
+            ),
+          );
+        }
+        if (_posts.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 48,
+                  color: cs.onSurface.withValues(alpha: 0.2),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'No posts yet. Tap + to create one.',
+                  style: TextStyle(
+                    color: cs.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final post = _posts[i - 1];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Stack(

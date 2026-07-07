@@ -6,6 +6,18 @@ import '../models/event_registration.dart';
 import '../models/user.dart';
 import 'notification_service.dart';
 
+class EventPage {
+  final List<EventModel> events;
+  final QueryDocumentSnapshot<Map<String, dynamic>>? cursor;
+  final bool hasMore;
+
+  const EventPage({
+    required this.events,
+    required this.cursor,
+    required this.hasMore,
+  });
+}
+
 class EventService {
   static final EventService _instance = EventService._internal();
   factory EventService() => _instance;
@@ -54,6 +66,34 @@ class EventService {
     final events = snap.docs.map((d) => EventModel.fromMap(d.data())).toList();
     events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
     return _withRegistrationState(events, userId);
+  }
+
+  Future<EventPage> getUpcomingEventsPage({
+    String? userId,
+    int limit = 10,
+    QueryDocumentSnapshot<Map<String, dynamic>>? startAfter,
+  }) async {
+    var query = _events
+        .where(
+          'eventDate',
+          isGreaterThanOrEqualTo: DateTime.now().toIso8601String(),
+        )
+        .orderBy('eventDate')
+        .limit(limit + 1);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    final snap = await query.get();
+    final visibleDocs = snap.docs.take(limit).toList();
+    final events =
+        visibleDocs.map((d) => EventModel.fromMap(d.data())).toList();
+    events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return EventPage(
+      events: await _withRegistrationState(events, userId),
+      cursor: visibleDocs.isEmpty ? startAfter : visibleDocs.last,
+      hasMore: snap.docs.length > limit,
+    );
   }
 
   Future<List<EventModel>> getEventsByClub(String clubId,

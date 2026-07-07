@@ -3,12 +3,14 @@ part of '../event_detail_screen.dart';
 class _EventDetailContent extends StatelessWidget {
   final EventModel event;
   final Color logoColor;
+  final bool autoPlayAudio;
   final VoidCallback onClubTap;
   final VoidCallback onCopyExternalForm;
 
   const _EventDetailContent({
     required this.event,
     required this.logoColor,
+    required this.autoPlayAudio,
     required this.onClubTap,
     required this.onCopyExternalForm,
   });
@@ -140,6 +142,20 @@ class _EventDetailContent extends StatelessWidget {
                 color: cs.onSurface.withValues(alpha: 0.75),
               ),
             ),
+            if (event.hasVideo || event.hasAudio) ...[
+              ContentMediaSection(
+                title: event.title,
+                youtubeVideoUrl: event.youtubeUrl,
+                directVideoUrl: event.videoUrl,
+                videoType: event.videoType,
+                audioUrl: event.audioUrl,
+                audioType: event.audioType,
+                audioSubtitle: 'Event music',
+                autoPlayAudio: autoPlayAudio,
+                topSpacing: 20,
+                betweenSpacing: 20,
+              ),
+            ],
             if (event.hasRegistrationRequirement) ...[
               const SizedBox(height: 20),
               const Text(

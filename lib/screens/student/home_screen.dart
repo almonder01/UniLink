@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/event.dart';
 import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
@@ -44,8 +45,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<EventModel> _dbEvents = [];
   Set<String> _savedPostIds = {};
   Set<String> _memberClubIds = {};
-  int _visiblePostCount = 10;
-  int _visibleEventCount = 10;
+  QueryDocumentSnapshot<Map<String, dynamic>>? _postCursor;
+  QueryDocumentSnapshot<Map<String, dynamic>>? _eventCursor;
+  bool _hasMorePosts = false;
+  bool _hasMoreEvents = false;
+  bool _loadingFeed = true;
+  bool _loadingMorePosts = false;
+  bool _loadingMoreEvents = false;
+
+  static const _feedPageSize = 10;
 
   @override
   void initState() {
@@ -54,27 +62,107 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadFeed() async {
-    final userId = context.read<AuthProvider>().currentUser?.id;
-    final posts = await DatabaseService().getRecentPosts(limit: 60);
-    final events = await EventService().getUpcomingEvents(
-      userId: userId,
-      limit: 60,
-    );
-    final memberClubIds = userId == null
-        ? <String>{}
-        : (await ClubMembershipService().memberClubIdsForUser(userId)).toSet();
-    final savedIds = userId == null
-        ? <String>{}
-        : await SavedPostService().getSavedPostIds(userId);
-    if (mounted) {
+    setState(() => _loadingFeed = true);
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      final postsFuture = DatabaseService().getRecentPostsPage(
+        limit: _feedPageSize,
+      );
+      final eventsFuture = EventService().getUpcomingEventsPage(
+        userId: userId,
+        limit: _feedPageSize,
+      );
+      final memberClubIdsFuture = userId == null
+          ? Future.value(<String>{})
+          : ClubMembershipService()
+              .memberClubIdsForUser(userId)
+              .then((ids) => ids.toSet());
+      final savedIdsFuture = userId == null
+          ? Future.value(<String>{})
+          : SavedPostService().getSavedPostIds(userId);
+
+      final posts = await postsFuture;
+      final events = await eventsFuture;
+      final memberClubIds = await memberClubIdsFuture;
+      final savedIds = await savedIdsFuture;
+      if (mounted) {
+        setState(() {
+          _dbPosts = posts.posts;
+          _dbEvents = events.events;
+          _postCursor = posts.cursor;
+          _eventCursor = events.cursor;
+          _hasMorePosts = posts.hasMore;
+          _hasMoreEvents = events.hasMore;
+          _memberClubIds = memberClubIds;
+          _savedPostIds = savedIds;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load feed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingFeed = false);
+    }
+  }
+
+  Future<void> _loadMorePosts() async {
+    if (_loadingMorePosts || !_hasMorePosts) return;
+    setState(() => _loadingMorePosts = true);
+    try {
+      final page = await DatabaseService().getRecentPostsPage(
+        limit: _feedPageSize,
+        startAfter: _postCursor,
+      );
+      if (!mounted) return;
       setState(() {
-        _dbPosts = posts;
-        _dbEvents = events;
-        _memberClubIds = memberClubIds;
-        _savedPostIds = savedIds;
-        _visiblePostCount = 10;
-        _visibleEventCount = 10;
+        _dbPosts = [..._dbPosts, ...page.posts];
+        _postCursor = page.cursor;
+        _hasMorePosts = page.hasMore;
       });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load more posts: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMorePosts = false);
+    }
+  }
+
+  Future<void> _loadMoreEvents() async {
+    if (_loadingMoreEvents || !_hasMoreEvents) return;
+    setState(() => _loadingMoreEvents = true);
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      final page = await EventService().getUpcomingEventsPage(
+        userId: userId,
+        limit: _feedPageSize,
+        startAfter: _eventCursor,
+      );
+      if (!mounted) return;
+      setState(() {
+        _dbEvents = [..._dbEvents, ...page.events];
+        _eventCursor = page.cursor;
+        _hasMoreEvents = page.hasMore;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load more events: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMoreEvents = false);
     }
   }
 
@@ -316,10 +404,6 @@ class _HomeScreenState extends State<HomeScreen> {
       followedIds,
       themeProvider.eventFeedPriority,
     );
-    final shownPosts = filteredPosts.take(_visiblePostCount).toList();
-    final shownEvents = events.take(_visibleEventCount).toList();
-    final hasMorePosts = filteredPosts.length > shownPosts.length;
-    final hasMoreEvents = events.length > shownEvents.length;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final eventCardWidth = screenWidth < 360 ? screenWidth - 48 : 320.0;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -340,13 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             _HomeEventsSection(
-              events: shownEvents,
-              hasMore: hasMoreEvents,
+              events: events,
+              hasMore: _hasMoreEvents,
+              isLoadingMore: _loadingMoreEvents,
               cardWidth: eventCardWidth,
               carouselHeight: eventCarouselHeight,
-              onLoadMore: () => setState(() {
-                _visibleEventCount += 10;
-              }),
+              onLoadMore: _loadMoreEvents,
               onOpenEvent: (event) => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -360,15 +443,15 @@ class _HomeScreenState extends State<HomeScreen> {
         
 
             _HomePostsSection(
-              posts: shownPosts,
-              hasMore: hasMorePosts,
+              posts: filteredPosts,
+              hasMore: _hasMorePosts,
+              isLoadingMore: _loadingMorePosts,
+              isInitialLoading: _loadingFeed,
               hasAnyClubContext:
                   followedIds.isNotEmpty || _memberClubIds.isNotEmpty,
               userId: userId,
               savedPostIds: _savedPostIds,
-              onLoadMore: () => setState(() {
-                _visiblePostCount += 10;
-              }),
+              onLoadMore: _loadMorePosts,
               onOpenPost: _openPostDetail,
               onLike: _toggleLike,
               onComment: _showComments,

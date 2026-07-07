@@ -6,6 +6,7 @@ import '../../widgets/event_card.dart';
 import '../student/event_detail_screen.dart';
 import 'create_event_screen.dart';
 import 'event_dashboard_screen.dart';
+import 'manager_action_banner.dart';
 import 'menu_tile.dart';
 import 'popup_menu_position.dart';
 import 'three_dot_button.dart';
@@ -196,40 +197,16 @@ class _EventsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Events',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  'Create, edit, delete, and monitor event activity',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cs.onSurface.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Event dashboard',
-            icon: const Icon(Icons.insights_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EventDashboardScreen(club: club),
-              ),
-            ),
-          ),
-        ],
+    return ManagerActionBanner(
+      icon: Icons.insights_rounded,
+      title: 'Events',
+      subtitle: 'Create, edit, delete, and monitor event activity',
+      tooltip: 'Event dashboard',
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EventDashboardScreen(club: club),
+        ),
       ),
     );
   }

@@ -7,32 +7,17 @@ class _MembersHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
+    return ManagerActionBanner(
+      icon: Icons.how_to_reg_rounded,
+      title: 'Members',
+      subtitle: 'Review requests and manage club members',
+      tooltip: 'Membership requests',
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Members',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Membership requests',
-            icon: const Icon(Icons.how_to_reg_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MembershipRequestsScreen(club: club),
-              ),
-            ),
-          ),
-        ],
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MembershipRequestsScreen(club: club),
+        ),
       ),
     );
   }

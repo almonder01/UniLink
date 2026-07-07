@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'widgets/admin_club_form_dialog.dart';
 import 'widgets/clubs_tab.dart';
 import 'widgets/users_tab.dart';
 
@@ -34,82 +35,69 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   // ── Clubs dialogs ──────────────────────────────────────────────────────────
 
+  Future<List<String>> _clubCategories() async {
+    final snap = await _db.collection('clubs').get();
+    final categories = snap.docs
+        .map((doc) => (doc.data()['category'] as String? ?? '').trim())
+        .where((category) => category.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return categories.isEmpty
+        ? ['Academic', 'Arts', 'Environment', 'Music', 'Sports', 'Tech']
+        : categories;
+  }
+
   void _showCreateClubDialog() {
-    final nameCtrl = TextEditingController();
-    final catCtrl  = TextEditingController();
-    final descCtrl = TextEditingController();
-    showDialog(
+    _showClubFormDialog();
+  }
+
+  void _showEditClubDialog(Map<String, dynamic> club) {
+    _showClubFormDialog(club: club);
+  }
+
+  Future<void> _showClubFormDialog({Map<String, dynamic>? club}) async {
+    final isEditing = club != null;
+    final categories = await _clubCategories();
+    if (!mounted) return;
+
+    final result = await showDialog<AdminClubFormResult>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Create New Club',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Club Name',
-                prefixIcon: Icon(Icons.groups_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: catCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                prefixIcon: Icon(Icons.category_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                alignLabelWithHint: true,
-                prefixIcon: Padding(
-                  padding: EdgeInsets.only(bottom: 40),
-                  child: Icon(Icons.description_rounded),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              Navigator.pop(context);
-              final ref = _db.collection('clubs').doc();
-              await ref.set({
-                'id': ref.id,
-                'name': nameCtrl.text.trim(),
-                'description': descCtrl.text.trim(),
-                'category': catCtrl.text.trim().isEmpty
-                    ? 'General'
-                    : catCtrl.text.trim(),
-                'logo_color': 'FF6366F1',
-                'member_count': 0,
-                'manager_id': null,
-                'manager_name': null,
-              });
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Club "${nameCtrl.text.trim()}" created!'),
-                behavior: SnackBarBehavior.floating,
-              ));
-            },
-            child: const Text('Create'),
-          ),
-        ],
+      builder: (_) => AdminClubFormDialog(
+        club: club,
+        categories: categories,
       ),
     );
+    if (result == null) return;
+
+    final data = {
+      'name': result.name,
+      'description': result.description,
+      'category': result.category,
+    };
+
+    if (isEditing) {
+      await _db.collection('clubs').doc(club['id'] as String).update(data);
+    } else {
+      final ref = _db.collection('clubs').doc();
+      await ref.set({
+        'id': ref.id,
+        ...data,
+        'logo_color': 'FF6366F1',
+        'member_count': 0,
+        'manager_id': null,
+        'manager_name': null,
+      });
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        isEditing
+            ? 'Club "${result.name}" updated.'
+            : 'Club "${result.name}" created!',
+      ),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   void _showAssignManagerDialog(Map<String, dynamic> club) {
@@ -334,6 +322,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             onDismissBanner: () => setState(() => _showBanner = false),
             onCreateClub: _showCreateClubDialog,
             onAssign: _showAssignManagerDialog,
+            onEdit: _showEditClubDialog,
             onUnassign: _unassignManager,
             onDelete: _deleteClub,
           ),

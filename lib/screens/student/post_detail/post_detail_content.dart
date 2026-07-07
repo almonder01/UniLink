@@ -7,6 +7,7 @@ class _PostDetailContent extends StatelessWidget {
   final bool saved;
   final int likeCount;
   final int commentCount;
+  final bool autoPlayAudio;
   final VoidCallback onOpenClub;
   final VoidCallback onToggleLike;
   final VoidCallback onShowComments;
@@ -20,6 +21,7 @@ class _PostDetailContent extends StatelessWidget {
     required this.saved,
     required this.likeCount,
     required this.commentCount,
+    required this.autoPlayAudio,
     required this.onOpenClub,
     required this.onToggleLike,
     required this.onShowComments,
@@ -55,6 +57,21 @@ class _PostDetailContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          ContentMediaSection(
+            title: post.title,
+            youtubeVideoUrl: post.youtubeUrl,
+            directVideoUrl: post.videoUrl,
+            videoType: post.videoType,
+            audioUrl: post.audioUrl,
+            audioType: post.audioType,
+            audioSubtitle: 'Post music',
+            autoPlayAudio: autoPlayAudio,
+            headingStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            bottomSpacing: 24,
+          ),
           const Text(
             'Photos',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
@@ -70,8 +87,9 @@ class _PostDetailContent extends StatelessWidget {
             runSpacing: 8,
             children: [
               _ActionBtn(
-                icon:
-                    liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                icon: liked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
                 label: 'Like',
                 count: likeCount,
                 color: liked ? Colors.red : null,

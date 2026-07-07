@@ -188,6 +188,18 @@ class EventCard extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const _EventTagChip(),
+                      if (event.hasVideo)
+                        const _EventTagChip(
+                          icon: Icons.smart_display_rounded,
+                          label: 'Video',
+                          color: Color(0xFFFF0000),
+                        ),
+                      if (event.hasAudio)
+                        const _EventTagChip(
+                          icon: Icons.music_note_rounded,
+                          label: 'Music',
+                          color: Color(0xFF8B5CF6),
+                        ),
                       if (event.requiresPayment)
                         _EventFeeChip(label: event.feeLabel),
                       if (event.hasCapacityLimit)

@@ -178,6 +178,19 @@ class PostCard extends StatelessWidget {
                         label: 'Post',
                         color: Color(0xFF14B8A6),
                       ),
+                      if ((post.youtubeUrl ?? '').trim().isNotEmpty ||
+                          (post.videoUrl ?? '').trim().isNotEmpty)
+                        const _TagChip(
+                          icon: Icons.smart_display_rounded,
+                          label: 'Video',
+                          color: Color(0xFFFF0000),
+                        ),
+                      if ((post.audioUrl ?? '').trim().isNotEmpty)
+                        const _TagChip(
+                          icon: Icons.music_note_rounded,
+                          label: 'Music',
+                          color: Color(0xFF8B5CF6),
+                        ),
                       _ActionChip(
                         icon: isLiked
                             ? Icons.favorite_rounded

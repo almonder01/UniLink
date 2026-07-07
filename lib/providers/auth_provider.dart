@@ -62,6 +62,11 @@ class AuthProvider extends ChangeNotifier {
         'notify_chat_from_members': true,
         'notify_chat_from_managers': true,
         'notify_chat_from_everyone': true,
+        'show_club_background_media': true,
+        'auto_open_club_videos': true,
+        'auto_play_club_music': true,
+        'auto_open_content_videos': false,
+        'auto_play_content_audio': true,
       }).catchError((_) {});
       ClubService().seedIfEmpty().catchError((_) {});
       return role;
@@ -130,6 +135,11 @@ class AuthProvider extends ChangeNotifier {
     bool? notifyChatFromMembers,
     bool? notifyChatFromManagers,
     bool? notifyChatFromEveryone,
+    bool? showClubBackgroundMedia,
+    bool? autoOpenClubVideos,
+    bool? autoPlayClubMusic,
+    bool? autoOpenContentVideos,
+    bool? autoPlayContentAudio,
   }) async {
     if (_currentUser == null) return;
     final updates = <String, dynamic>{};
@@ -162,6 +172,21 @@ class AuthProvider extends ChangeNotifier {
     if (notifyChatFromEveryone != null) {
       updates['notify_chat_from_everyone'] = notifyChatFromEveryone;
     }
+    if (showClubBackgroundMedia != null) {
+      updates['show_club_background_media'] = showClubBackgroundMedia;
+    }
+    if (autoOpenClubVideos != null) {
+      updates['auto_open_club_videos'] = autoOpenClubVideos;
+    }
+    if (autoPlayClubMusic != null) {
+      updates['auto_play_club_music'] = autoPlayClubMusic;
+    }
+    if (autoOpenContentVideos != null) {
+      updates['auto_open_content_videos'] = autoOpenContentVideos;
+    }
+    if (autoPlayContentAudio != null) {
+      updates['auto_play_content_audio'] = autoPlayContentAudio;
+    }
     if (updates.isEmpty) return;
     await _db.collection('profiles').doc(_currentUser!.id).update(updates);
     _currentUser = _currentUser!.copyWith(
@@ -178,6 +203,11 @@ class AuthProvider extends ChangeNotifier {
       notifyChatFromMembers: notifyChatFromMembers,
       notifyChatFromManagers: notifyChatFromManagers,
       notifyChatFromEveryone: notifyChatFromEveryone,
+      showClubBackgroundMedia: showClubBackgroundMedia,
+      autoOpenClubVideos: autoOpenClubVideos,
+      autoPlayClubMusic: autoPlayClubMusic,
+      autoOpenContentVideos: autoOpenContentVideos,
+      autoPlayContentAudio: autoPlayContentAudio,
     );
     notifyListeners();
   }

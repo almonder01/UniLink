@@ -7,6 +7,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/club_provider.dart';
 import '../../services/event_service.dart';
 import '../../widgets/base64_image.dart';
+import '../../widgets/content_auto_media_launcher.dart';
+import '../../widgets/content_media_section.dart';
 import '../../widgets/event_map_preview.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_gallery.dart';
@@ -141,26 +143,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final logoColor = widget.event.clubLogoColor != null
         ? Color(int.parse(widget.event.clubLogoColor!, radix: 16))
         : cs.primary;
+    final autoPlayContentAudio =
+        context.watch<AuthProvider>().currentUser?.autoPlayContentAudio ?? true;
+    final autoOpenContentVideos =
+        context.watch<AuthProvider>().currentUser?.autoOpenContentVideos ??
+            false;
+    final shouldAutoPlayAudio =
+        autoPlayContentAudio && widget.event.audioAutoPlay;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          _EventDetailHeader(
-            event: widget.event,
-            coverColor: coverColor,
-          ),
-        
-
-          _EventDetailContent(
-            event: widget.event,
-            logoColor: logoColor,
-            onClubTap: _openClub,
-            onCopyExternalForm: _copyExternalForm,
-          ),
-        
-        ],
+      body: ContentAutoMediaLauncher(
+        title: widget.event.title,
+        youtubeVideoUrl: widget.event.youtubeUrl,
+        directVideoUrl: widget.event.videoUrl,
+        autoOpenVideo: autoOpenContentVideos && widget.event.videoAutoOpen,
+        audioUrl: widget.event.audioUrl,
+        audioType: widget.event.audioType,
+        autoPlayAudio: shouldAutoPlayAudio,
+        child: CustomScrollView(
+          slivers: [
+            _EventDetailHeader(
+              event: widget.event,
+              coverColor: coverColor,
+            ),
+            _EventDetailContent(
+              event: widget.event,
+              logoColor: logoColor,
+              autoPlayAudio: shouldAutoPlayAudio,
+              onClubTap: _openClub,
+              onCopyExternalForm: _copyExternalForm,
+            ),
+          ],
+        ),
       ),
-
       bottomNavigationBar: _EventRegistrationBar(
         event: widget.event,
         isRegistered: _isRegistered,
@@ -168,7 +183,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         onRegister: _confirmRegistration,
         onShare: _shareEvent,
       ),
-        
     );
   }
 }

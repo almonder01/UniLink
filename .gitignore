@@ -44,7 +44,12 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firebase service account key — never commit
+# Firebase service account key - never commit
 serviceAccountKey.json
 
-Reports/
+Reports/*
+!Reports/
+!Reports/UniLink_Academic_Report.docx
+!Reports/UniLink_Academic_Report_Text.md
+!Reports/UniLink_Academic_Report_Updated.docx
+!Reports/build_unilink_academic_report.py
