@@ -2,21 +2,21 @@
 
 UniLink is a Flutter mobile application for university club discovery, event management, social engagement, and club communication.
 
-The current version supports three user roles: university admin, club manager, and student. Students can discover clubs, follow clubs, request membership, register for events, interact with posts, save posts, chat privately, and join club text rooms. Club managers can manage the public club profile, posts, events, members, event registrations, room invitations, payment requests, and reusable media assets. University admins can manage clubs and users from an admin dashboard.
+The current version supports three user roles: university admin, club manager, and student. Students can discover clubs, follow clubs, request membership, register for events, interact with posts, save posts, chat privately, and join club text rooms. Club managers can manage the public club profile, posts, events, members, event registrations, room invitations, payment requests, and reusable media assets. University admins can manage clubs and users from an admin dashboard, including field-scoped approval for protected club profile edits.
 
 ## Main Features
 
 - Student authentication, editable profile information, gender avatar fallback, optional profile and cover images, privacy settings, media autoplay preferences, and notification preferences.
 - Club discovery with follower/member separation, follow status, member visibility, follower visibility, membership requests, and clickable club identity rows across the app.
 - Home feed search with collapsible filters for content type, event date range, and media availability across matching events and posts.
-- Club profile management with logo, cover image, gallery photos, about text, feature/code display, logo background color, background video, background music, and separate auto-open/autoplay controls.
+- Club profile management with logo image, logo color, logo background toggle, cover image, gallery photos, about text, feature/code display, background video, background music, and separate auto-open/autoplay controls. Club name, description, and logo image changes require field-scoped university admin permission; logo color and logo background can be saved directly by the club manager.
 - Posts with images, YouTube video, uploaded video, optional music, per-post media auto controls, likes, comments, saved posts, share-to-chat actions, and editable/deletable comments.
 - Event creation and editing with date, time, map location, capacity, fee/currency, optional Google Form link, optional registration text/file requirements, receipts, media, and per-event media auto controls.
 - Event dashboard with planned/active/finished filters, registration status control, attendance, quick approval, payments, documents, and invitation panels.
 - Direct person-to-person messages with unread indicators, message privacy, and post/event attachments.
 - Club text rooms for members and managers, multiple room management, room invitations, event-based invitation groups, and shareable post/event attachments.
 - Manager payment tools for monthly club payments and event fees with receipt upload/review flow.
-- Admin dashboard for users and clubs, including editable club name/category, category selection or custom entry, user messaging, and temporary/permanent club detail edit permission control for managers.
+- Admin dashboard for users and clubs, including editable club name/category/description/logo settings, category selection or custom entry, user messaging, and temporary/permanent field-scoped club profile edit permission control for managers.
 - Responsive light/dark theme UI with reusable cards, dialogs, search fields, lists, avatars, collapsible media fields, and paginated home loading.
 
 ## Compulsory Features
@@ -118,7 +118,7 @@ The app uses these main Firestore collections and subcollections:
 - `direct_chats/{chatId}/messages`
 - `media_assets`
 
-Important Firestore rules note: the latest app features require rules for `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, and `club_detail_edit_permissions`. If these are missing in the deployed Firebase rules, media library saving/renaming, membership requests, and protected club detail edit permissions will fail even when the UI is correct.
+Important Firestore rules note: the latest app features require rules for `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, and `club_detail_edit_permissions`. If these are missing in the deployed Firebase rules, media library saving/renaming, membership requests, and protected club profile edit permissions will fail even when the UI is correct. Club managers may update general profile media and logo color/background directly, while club name, description, and `logo_image_base64` changes require active field-scoped permission.
 
 Suggested rule shape:
 
@@ -188,7 +188,7 @@ flutter analyze
 flutter run
 ```
 
-Also verify Firebase rules against the latest collections, especially `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, `club_detail_edit_permissions`, chat subcollections, notifications, event registrations, and payment receipts.
+Also verify Firebase rules against the latest collections, especially `media_assets`, `club_membership_requests`, `club_detail_edit_requests`, `club_detail_edit_permissions`, chat subcollections, notifications, event registrations, and payment receipts. Confirm that managers can save logo color/background without approval, while club name, description, and logo image updates remain protected.
 
 ## Release Notes
 
