@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../core/theme/app_theme_tokens.dart';
 import '../models/post.dart';
 import 'base64_image.dart';
 import 'identity_avatar.dart';
@@ -43,6 +44,7 @@ class PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final coverColor = Color(int.parse(post.coverColor, radix: 16));
     final logoColor = post.clubLogoColor != null
         ? Color(int.parse(post.clubLogoColor!, radix: 16))
@@ -52,7 +54,7 @@ class PostCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: tokens.radiusXlBorder,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -60,14 +62,7 @@ class PostCard extends StatelessWidget {
               aspectRatio: 16 / 6,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      coverColor,
-                      Color.lerp(coverColor, Colors.indigo.shade900, 0.45)!,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: tokens.postGradient(coverColor),
                 ),
                 child: Stack(
                   fit: StackFit.expand,
@@ -96,13 +91,13 @@ class PostCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.10),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
                       left: 12,
                       top: 12,
                       child: _TypeChip(
                         icon: Icons.chat_bubble_rounded,
                         label: 'POST',
-                        color: Color(0xFF14B8A6),
+                        color: tokens.info,
                       ),
                     ),
                   ],
@@ -173,10 +168,10 @@ class PostCard extends StatelessWidget {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const _TagChip(
+                      _TagChip(
                         icon: Icons.chat_bubble_outline_rounded,
                         label: 'Post',
-                        color: Color(0xFF14B8A6),
+                        color: tokens.info,
                       ),
                       if ((post.youtubeUrl ?? '').trim().isNotEmpty ||
                           (post.videoUrl ?? '').trim().isNotEmpty)
@@ -186,19 +181,19 @@ class PostCard extends StatelessWidget {
                           color: Color(0xFFFF0000),
                         ),
                       if ((post.audioUrl ?? '').trim().isNotEmpty)
-                        const _TagChip(
+                        _TagChip(
                           icon: Icons.music_note_rounded,
                           label: 'Music',
-                          color: Color(0xFF8B5CF6),
+                          color: tokens.accent,
                         ),
-                      _ActionChip(
-                        icon: isLiked
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        label: '${likeCount ?? post.likeCount}',
-                        color: isLiked ? Colors.red : null,
-                        onTap: onLike,
-                      ),
+                        _ActionChip(
+                          icon: isLiked
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          label: '${likeCount ?? post.likeCount}',
+                          color: isLiked ? tokens.danger : null,
+                          onTap: onLike,
+                        ),
                       _ActionChip(
                         icon: Icons.mode_comment_outlined,
                         label: '${commentCount ?? post.commentCount}',

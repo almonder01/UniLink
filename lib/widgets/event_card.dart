@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/theme/app_theme_tokens.dart';
 import '../models/event.dart';
 import 'base64_image.dart';
 import 'identity_avatar.dart';
@@ -33,6 +34,7 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final coverColor = Color(int.parse(event.coverColor, radix: 16));
     final logoColor = event.clubLogoColor != null
         ? Color(int.parse(event.clubLogoColor!, radix: 16))
@@ -42,7 +44,7 @@ class EventCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: tokens.radiusXlBorder,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,14 +53,7 @@ class EventCard extends StatelessWidget {
               aspectRatio: 16 / 6,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      coverColor,
-                      Color.lerp(coverColor, Colors.orange.shade900, 0.4)!,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: tokens.eventGradient(coverColor),
                 ),
                 child: Stack(
                   fit: StackFit.expand,
@@ -195,10 +190,10 @@ class EventCard extends StatelessWidget {
                           color: Color(0xFFFF0000),
                         ),
                       if (event.hasAudio)
-                        const _EventTagChip(
+                        _EventTagChip(
                           icon: Icons.music_note_rounded,
                           label: 'Music',
-                          color: Color(0xFF8B5CF6),
+                          color: tokens.accent,
                         ),
                       if (event.requiresPayment)
                         _EventFeeChip(label: event.feeLabel),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme_tokens.dart';
+
 class ConfirmActionDialog extends StatelessWidget {
   final String title;
   final String message;
@@ -21,13 +23,14 @@ class ConfirmActionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
       title: Row(
         children: [
           if (icon != null) ...[
             Icon(icon, color: confirmColor ?? cs.primary),
-            const SizedBox(width: 10),
+            SizedBox(width: tokens.spaceSm + 2),
           ],
           Expanded(
             child: Text(

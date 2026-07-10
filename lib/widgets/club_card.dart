@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/app_theme_tokens.dart';
 import '../models/club.dart';
 import 'identity_avatar.dart';
 
@@ -19,13 +20,14 @@ class ClubCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final logoColor = Color(int.parse(club.logoColor, radix: 16));
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: tokens.radiusXlBorder,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
           child: Column(
@@ -34,7 +36,7 @@ class ClubCard extends StatelessWidget {
               // Logo
               DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(tokens.radiusLg + 2),
                   boxShadow: [
                     BoxShadow(
                       color: logoColor.withValues(alpha: 0.3),
@@ -65,7 +67,7 @@ class ClubCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: logoColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: tokens.radiusPillBorder,
                 ),
                 child: Text(
                   club.category,

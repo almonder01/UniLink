@@ -1,109 +1,142 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_theme_tokens.dart';
+
 class AppTheme {
-  static const Color _seed = Color(0xFF6366F1);
+  static ThemeData get lightTheme => _build(AppThemeTokens.unilinkLight);
+  static ThemeData get darkTheme => _build(AppThemeTokens.unilinkDark);
 
   static TextTheme _textTheme(Brightness brightness) =>
       GoogleFonts.plusJakartaSansTextTheme(
         ThemeData(brightness: brightness).textTheme,
       );
 
-  static ThemeData get lightTheme {
-    final cs = ColorScheme.fromSeed(seedColor: _seed);
+  static ThemeData _build(AppThemeTokens tokens) {
+    final cs = ColorScheme.fromSeed(
+      seedColor: tokens.seed,
+      brightness: tokens.brightness,
+    );
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: cs,
-      textTheme: _textTheme(Brightness.light),
-      scaffoldBackgroundColor: const Color(0xFFF6F5FF),
+      extensions: <ThemeExtension<dynamic>>[tokens],
+      textTheme: _textTheme(tokens.brightness),
+      scaffoldBackgroundColor: tokens.pageBackground,
       cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        color: Colors.white,
+        elevation: tokens.cardElevation,
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
+        color: tokens.surface,
         surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
+        shadowColor: tokens.shadow,
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF0EFFF),
+        fillColor: tokens.inputFill,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: tokens.radiusMdBorder,
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: tokens.radiusMdBorder,
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _seed, width: 2),
+          borderRadius: tokens.radiusMdBorder,
+          borderSide: BorderSide(color: tokens.seed, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: cs.error, width: 1.5),
+          borderRadius: tokens.radiusMdBorder,
+          borderSide: BorderSide(color: tokens.danger, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: cs.error, width: 2),
+          borderRadius: tokens.radiusMdBorder,
+          borderSide: BorderSide(color: tokens.danger, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: tokens.spaceLg,
+          vertical: tokens.spaceLg,
+        ),
+        labelStyle: TextStyle(color: tokens.textMuted, fontSize: 14),
+        hintStyle: TextStyle(color: tokens.textMuted.withValues(alpha: 0.62)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _seed,
+          backgroundColor: tokens.seed,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: tokens.radiusMdBorder),
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spaceXl,
+            vertical: tokens.spaceLg,
+          ),
           textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: tokens.radiusMdBorder),
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spaceXl,
+            vertical: tokens.spaceLg,
+          ),
           textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          side: const BorderSide(color: _seed, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: tokens.radiusMdBorder),
+          side: BorderSide(color: tokens.seed, width: 1.5),
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spaceXl,
+            vertical: tokens.spaceLg,
+          ),
           textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: const Color(0xFFF6F5FF),
-        foregroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: tokens.pageBackground,
+        foregroundColor: tokens.textStrong,
         titleTextStyle: GoogleFonts.plusJakartaSans(
           fontWeight: FontWeight.w700,
           fontSize: 20,
-          color: const Color(0xFF1A1A2E),
+          color: tokens.textStrong,
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
+        iconTheme: IconThemeData(color: tokens.textStrong),
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: 70,
-        backgroundColor: Colors.white,
-        indicatorColor: _seed.withValues(alpha: 0.12),
+        backgroundColor: tokens.surface,
+        indicatorColor: tokens.seed.withValues(alpha: tokens.isDark ? 0.2 : 0.12),
         labelTextStyle: WidgetStateProperty.all(
           GoogleFonts.plusJakartaSans(
-              fontSize: 11, fontWeight: FontWeight.w600),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
+      ),
+      searchBarTheme: SearchBarThemeData(
+        elevation: WidgetStateProperty.all(0),
+        backgroundColor: WidgetStateProperty.all(tokens.surface),
+        surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
+        ),
+        side: WidgetStateProperty.all(BorderSide(color: tokens.border)),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -112,136 +145,33 @@ class AppTheme {
           color: cs.onInverseSurface,
           fontWeight: FontWeight.w600,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusMdBorder),
       ),
       listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusMdBorder),
         iconColor: cs.primary,
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
+        padding: EdgeInsets.symmetric(horizontal: tokens.spaceXs),
       ),
       dividerTheme: DividerThemeData(
-          space: 1, thickness: 1, color: Colors.grey.withValues(alpha: 0.12)),
+        space: 1,
+        thickness: 1,
+        color: tokens.border.withValues(alpha: tokens.isDark ? 0.72 : 0.6),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.selected) ? _seed : Colors.grey[400]),
-        trackColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected)
-                ? _seed.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.15)),
-      ),
-    );
-  }
-
-  static ThemeData get darkTheme {
-    final cs =
-        ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark);
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: cs,
-      textTheme: _textTheme(Brightness.dark),
-      scaffoldBackgroundColor: const Color(0xFF0E0D1B),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        color: const Color(0xFF1C1A2E),
-        surfaceTintColor: Colors.transparent,
-        margin: EdgeInsets.zero,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF26233B),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          (states) => states.contains(WidgetState.selected)
+              ? tokens.seed
+              : tokens.textMuted,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF818CF8), width: 2),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        labelStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-        hintStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF818CF8),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? tokens.seed.withValues(alpha: 0.3)
+              : tokens.textMuted.withValues(alpha: 0.15),
         ),
       ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          side: const BorderSide(color: Color(0xFF818CF8), width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600, fontSize: 15),
-        ),
-      ),
-      appBarTheme: AppBarTheme(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: const Color(0xFF0E0D1B),
-        foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontWeight: FontWeight.w700,
-          fontSize: 20,
-          color: Colors.white,
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        elevation: 0,
-        height: 70,
-        backgroundColor: const Color(0xFF1C1A2E),
-        indicatorColor: const Color(0xFF818CF8).withValues(alpha: 0.2),
-        labelTextStyle: WidgetStateProperty.all(
-          GoogleFonts.plusJakartaSans(
-              fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: cs.inverseSurface,
-        contentTextStyle: GoogleFonts.plusJakartaSans(
-          color: cs.onInverseSurface,
-          fontWeight: FontWeight.w600,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        iconColor: cs.primary,
-      ),
-      chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-      ),
-      dividerTheme: DividerThemeData(
-          space: 1, thickness: 1, color: Colors.white.withValues(alpha: 0.07)),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/app_theme_tokens.dart';
 import '../../providers/notification_provider.dart';
 import '../student/clubs_screen.dart';
 import '../student/notifications_screen.dart';
@@ -19,6 +20,7 @@ class _AdminShellState extends State<AdminShell> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final hasUnreadNotifications =
         context.watch<NotificationProvider>().unreadCount > 0;
     final screens = [
@@ -34,7 +36,7 @@ class _AdminShellState extends State<AdminShell> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: tokens.shadow,
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -89,6 +91,7 @@ class _NavIconWithDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -101,7 +104,7 @@ class _NavIconWithDot extends StatelessWidget {
               width: 9,
               height: 9,
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6),
+                color: tokens.info,
                 shape: BoxShape.circle,
                 border: Border.all(color: cs.surface, width: 1.5),
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_theme_tokens.dart';
 import '../../providers/notification_provider.dart';
 import 'home_screen.dart';
 import 'clubs_screen.dart';
@@ -18,6 +19,7 @@ class _StudentShellState extends State<StudentShell> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
 
     const screens = [
@@ -33,7 +35,7 @@ class _StudentShellState extends State<StudentShell> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: tokens.shadow,
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
