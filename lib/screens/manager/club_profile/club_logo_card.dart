@@ -6,6 +6,12 @@ class _ClubLogoCard extends StatelessWidget {
   final bool showLogoBackground;
   final String selectedLogoColor;
   final List<String> logoColors;
+  final bool canEditLogo;
+  final bool loading;
+  final bool requesting;
+  final DateTime? permissionExpiresAt;
+  final bool showRequestButton;
+  final VoidCallback onRequestEdit;
   final VoidCallback onPickLogoImage;
   final VoidCallback onRemoveLogoImage;
   final ValueChanged<bool> onShowLogoBackgroundChanged;
@@ -17,6 +23,12 @@ class _ClubLogoCard extends StatelessWidget {
     required this.showLogoBackground,
     required this.selectedLogoColor,
     required this.logoColors,
+    required this.canEditLogo,
+    required this.loading,
+    required this.requesting,
+    required this.permissionExpiresAt,
+    required this.showRequestButton,
+    required this.onRequestEdit,
     required this.onPickLogoImage,
     required this.onRemoveLogoImage,
     required this.onShowLogoBackgroundChanged,
@@ -25,18 +37,52 @@ class _ClubLogoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final expiresAt = permissionExpiresAt;
+    final statusText = loading
+        ? 'Checking edit permission...'
+        : canEditLogo && expiresAt != null
+            ? 'Logo image unlocked until ${TimeOfDay.fromDateTime(expiresAt).format(context)}'
+            : 'Logo image changes need admin permission.';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Club Logo',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                if (showRequestButton)
+                  IconButton.filledTonal(
+                    tooltip: 'Request edit permission',
+                    onPressed: loading || requesting ? null : onRequestEdit,
+                    icon: requesting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Text(
-              'Club Logo',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              statusText,
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: 0.58),
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -48,12 +94,14 @@ class _ClubLogoCard extends StatelessWidget {
                   showBackground: showLogoBackground,
                   size: 72,
                   borderRadius: 18,
-                  onTap: logoImage == null
+                  onTap: logoImage == null && canEditLogo
                       ? onPickLogoImage
-                      : () => showBase64ImagePreview(
-                            context,
-                            data: base64Encode(logoImage!),
-                          ),
+                      : logoImage != null
+                          ? () => showBase64ImagePreview(
+                                context,
+                                data: base64Encode(logoImage!),
+                              )
+                          : null,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -62,14 +110,14 @@ class _ClubLogoCard extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       FilledButton.tonalIcon(
-                        onPressed: onPickLogoImage,
+                        onPressed: canEditLogo ? onPickLogoImage : null,
                         icon: const Icon(Icons.add_photo_alternate_rounded),
                         label:
                             Text(logoImage == null ? 'Add logo' : 'Change logo'),
                       ),
                       if (logoImage != null)
                         IconButton.filledTonal(
-                          onPressed: onRemoveLogoImage,
+                          onPressed: canEditLogo ? onRemoveLogoImage : null,
                           icon: const Icon(Icons.delete_outline_rounded),
                           tooltip: 'Remove logo',
                         ),

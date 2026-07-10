@@ -57,11 +57,40 @@ service cloud.firestore {
           .data.expires_at > request.time;
     }
 
+    function clubDetailEditPermissionFields(clubId) {
+      return get(clubDetailEditPermissionPath(clubId, request.auth.uid))
+        .data
+        .keys()
+        .hasAny(['fields'])
+        ? get(clubDetailEditPermissionPath(clubId, request.auth.uid))
+          .data.fields
+        : ['name', 'description'];
+    }
+
+    function hasClubDetailFieldPermission(clubId, field) {
+      return hasActiveClubDetailEditPermission(clubId)
+        && clubDetailEditPermissionFields(clubId).hasAny([field]);
+    }
+
+    function changedClubFields() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
     function clubIdentityDetailsUnchanged() {
-      return !request.resource.data
-        .diff(resource.data)
-        .affectedKeys()
-        .hasAny(['name', 'description']);
+      return !changedClubFields().hasAny([
+        'name',
+        'description',
+        'logo_image_base64',
+      ]);
+    }
+
+    function clubIdentityDetailChangesAllowed(clubId) {
+      return (!changedClubFields().hasAny(['name'])
+          || hasClubDetailFieldPermission(clubId, 'name'))
+        && (!changedClubFields().hasAny(['description'])
+          || hasClubDetailFieldPermission(clubId, 'description'))
+        && (!changedClubFields().hasAny(['logo_image_base64'])
+          || hasClubDetailFieldPermission(clubId, 'logo'));
     }
 
     function participantOfChat(chatId) {
@@ -86,7 +115,7 @@ service cloud.firestore {
           isClubManager(clubId)
           && (
             clubIdentityDetailsUnchanged()
-            || hasActiveClubDetailEditPermission(clubId)
+            || clubIdentityDetailChangesAllowed(clubId)
           )
         );
     }

@@ -124,10 +124,12 @@ class _UsersTabState extends State<UsersTab> {
         adminId: currentUser.id,
         minutes: result.minutes,
         managerName: manager['name'] as String? ?? '',
+        fields: result.fields,
       );
       if (!mounted) return;
+      final fieldSummary = ClubDetailEditField.describe(result.fields);
       final message = result.isPermanent
-          ? 'Edit permission granted permanently.'
+          ? 'Edit permission for $fieldSummary granted permanently.'
           : 'Edit permission granted until '
               '${TimeOfDay.fromDateTime(expiresAt).format(context)}.';
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +154,7 @@ class _UsersTabState extends State<UsersTab> {
 
     final confirmed = await showConfirmActionDialog(
       context,
-      title: 'Lock club details?',
+      title: 'Lock club profile edits?',
       message: 'Close edit access for ${manager['name'] ?? 'this manager'}?',
       confirmLabel: 'Lock',
       icon: Icons.lock_outline_rounded,
@@ -169,7 +171,7 @@ class _UsersTabState extends State<UsersTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Club detail editing locked.'),
+          content: Text('Club profile editing locked.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -451,7 +453,7 @@ class _MenuButton extends StatelessWidget {
               label: loadingPermission
                   ? 'Checking access...'
                   : hasActiveEditPermission
-                      ? 'Lock club details'
+                      ? 'Lock club profile'
                       : 'Grant edit permission',
             ),
           ),
@@ -508,8 +510,12 @@ enum _UserAction {
 
 class _GrantEditPermissionResult {
   final int? minutes;
+  final List<String> fields;
 
-  const _GrantEditPermissionResult({required this.minutes});
+  const _GrantEditPermissionResult({
+    required this.minutes,
+    required this.fields,
+  });
 
   bool get isPermanent => minutes == null;
 }
@@ -532,7 +538,17 @@ class _GrantEditPermissionDialogState
     extends State<_GrantEditPermissionDialog> {
   final _minutesCtrl = TextEditingController(text: '10');
   bool _permanent = false;
-  String? _error;
+  bool _name = true;
+  bool _description = true;
+  bool _logo = true;
+  String? _fieldError;
+  String? _minutesError;
+
+  List<String> get _fields => [
+        if (_name) ClubDetailEditField.name,
+        if (_description) ClubDetailEditField.description,
+        if (_logo) ClubDetailEditField.logo,
+      ];
 
   @override
   void dispose() {
@@ -541,20 +557,50 @@ class _GrantEditPermissionDialogState
   }
 
   void _submit() {
+    final fields = _fields;
+    if (fields.isEmpty) {
+      setState(() => _fieldError = 'Select at least one field.');
+      return;
+    }
+
     if (_permanent) {
       Navigator.pop(
         context,
-        const _GrantEditPermissionResult(minutes: null),
+        _GrantEditPermissionResult(minutes: null, fields: fields),
       );
       return;
     }
 
     final minutes = int.tryParse(_minutesCtrl.text.trim());
     if (minutes == null || minutes <= 0) {
-      setState(() => _error = 'Enter a valid number of minutes.');
+      setState(() => _minutesError = 'Enter a valid number of minutes.');
       return;
     }
-    Navigator.pop(context, _GrantEditPermissionResult(minutes: minutes));
+    Navigator.pop(
+      context,
+      _GrantEditPermissionResult(minutes: minutes, fields: fields),
+    );
+  }
+
+  Widget _fieldTile({
+    required String title,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return CheckboxListTile(
+      value: value,
+      controlAffinity: ListTileControlAffinity.leading,
+      secondary: Icon(icon),
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      onChanged: (checked) {
+        setState(() {
+          onChanged(checked ?? false);
+          _fieldError = null;
+        });
+      },
+    );
   }
 
   @override
@@ -575,10 +621,33 @@ class _GrantEditPermissionDialogState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Allow ${widget.managerName} to edit ${widget.clubName} name and '
-            'description.',
+            'Allow ${widget.managerName} to edit selected fields for '
+            '${widget.clubName}.',
             style: TextStyle(color: cs.onSurface.withValues(alpha: 0.72)),
           ),
+          const SizedBox(height: 10),
+          _fieldTile(
+            title: 'Club name',
+            icon: Icons.badge_outlined,
+            value: _name,
+            onChanged: (value) => _name = value,
+          ),
+          _fieldTile(
+            title: 'Description',
+            icon: Icons.notes_rounded,
+            value: _description,
+            onChanged: (value) => _description = value,
+          ),
+          _fieldTile(
+            title: 'Logo image',
+            icon: Icons.image_outlined,
+            value: _logo,
+            onChanged: (value) => _logo = value,
+          ),
+          if (_fieldError != null) ...[
+            const SizedBox(height: 6),
+            Text(_fieldError!, style: TextStyle(color: cs.error)),
+          ],
           const SizedBox(height: 14),
           SwitchListTile(
             value: _permanent,
@@ -586,7 +655,7 @@ class _GrantEditPermissionDialogState
             title: const Text('Permanent access'),
             onChanged: (value) => setState(() {
               _permanent = value;
-              _error = null;
+              _minutesError = null;
             }),
           ),
           TextField(
@@ -596,7 +665,7 @@ class _GrantEditPermissionDialogState
             decoration: InputDecoration(
               labelText: 'Minutes',
               prefixIcon: const Icon(Icons.timer_outlined),
-              errorText: _error,
+              errorText: _minutesError,
             ),
           ),
         ],

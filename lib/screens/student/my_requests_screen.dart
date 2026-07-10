@@ -98,7 +98,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                   const SizedBox(height: 18),
                 ],
                 if (data.detailEditRequests.isNotEmpty) ...[
-                  const _SectionTitle('Club Detail Edit Requests'),
+                  const _SectionTitle('Club Profile Edit Requests'),
                   const SizedBox(height: 8),
                   ...data.detailEditRequests.map((request) =>
                       _ClubDetailEditRequestCard(request: request)),
@@ -177,17 +177,18 @@ class _ClubDetailEditRequestCard extends StatelessWidget {
 
   String _subtitle(BuildContext context) {
     final grantedUntil = request.grantedUntil;
+    final fieldSummary = ClubDetailEditField.describe(request.fields);
     if (request.isGranted && grantedUntil != null) {
       if (grantedUntil.year >= 9999) {
-        return 'Club details edit access - permanent';
+        return '$fieldSummary edit access - permanent';
       }
-      return 'Club details edit access - until '
+      return '$fieldSummary edit access - until '
           '${TimeOfDay.fromDateTime(grantedUntil).format(context)}';
     }
     if (request.status == 'locked') {
-      return 'Club details edit access locked';
+      return 'Club profile edit access locked';
     }
-    return 'Club details edit request';
+    return '$fieldSummary edit request';
   }
 
   @override

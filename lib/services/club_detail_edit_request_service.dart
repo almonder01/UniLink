@@ -10,6 +10,60 @@ enum ClubDetailEditRequestResult {
   noAdmins,
 }
 
+class ClubDetailEditField {
+  static const String name = 'name';
+  static const String description = 'description';
+  static const String logo = 'logo';
+
+  static const List<String> details = [name, description];
+  static const List<String> all = [name, description, logo];
+
+  static List<String> fromData(Object? value) {
+    if (value is Iterable) return normalize(value.cast<Object?>());
+    return normalize(null);
+  }
+
+  static List<String> normalize(Iterable<Object?>? fields) {
+    final selected = fields == null
+        ? details.toSet()
+        : fields.whereType<String>().toSet();
+    final normalized =
+        all.where((field) => selected.contains(field)).toList(growable: false);
+    return normalized.isEmpty ? List<String>.from(details) : normalized;
+  }
+
+  static String label(String field) {
+    return switch (field) {
+      name => 'club name',
+      description => 'description',
+      logo => 'logo image',
+      _ => field,
+    };
+  }
+
+  static String describe(Iterable<String> fields) {
+    final labels = normalize(fields).map(label).toList(growable: false);
+    if (labels.length == 1) return labels.first;
+    if (labels.length == 2) return '${labels.first} and ${labels.last}';
+    return '${labels.take(labels.length - 1).join(', ')}, and ${labels.last}';
+  }
+}
+
+class ClubDetailEditPermission {
+  final DateTime expiresAt;
+  final List<String> fields;
+
+  const ClubDetailEditPermission({
+    required this.expiresAt,
+    required this.fields,
+  });
+
+  bool allows(String field) => fields.contains(field);
+  bool get canEditName => allows(ClubDetailEditField.name);
+  bool get canEditDescription => allows(ClubDetailEditField.description);
+  bool get canEditLogo => allows(ClubDetailEditField.logo);
+}
+
 class ClubDetailEditRequest {
   final String id;
   final String clubId;
@@ -17,6 +71,7 @@ class ClubDetailEditRequest {
   final String managerId;
   final String managerName;
   final String status;
+  final List<String> fields;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? grantedUntil;
@@ -28,6 +83,7 @@ class ClubDetailEditRequest {
     required this.managerId,
     required this.managerName,
     required this.status,
+    required this.fields,
     this.createdAt,
     this.updatedAt,
     this.grantedUntil,
@@ -49,6 +105,7 @@ class ClubDetailEditRequest {
       managerId: data['manager_id'] as String? ?? '',
       managerName: data['manager_name'] as String? ?? '',
       status: data['status'] as String? ?? 'pending',
+      fields: ClubDetailEditField.fromData(data['fields']),
       createdAt: timestampToDate(data['created_at']),
       updatedAt: timestampToDate(data['updated_at']),
       grantedUntil: timestampToDate(data['granted_until']),
@@ -88,6 +145,17 @@ class ClubDetailEditRequestService {
     required String clubId,
     required String managerId,
   }) async {
+    final permission = await activePermission(
+      clubId: clubId,
+      managerId: managerId,
+    );
+    return permission?.expiresAt;
+  }
+
+  Future<ClubDetailEditPermission?> activePermission({
+    required String clubId,
+    required String managerId,
+  }) async {
     final doc = await _permissionRef(
       clubId: clubId,
       managerId: managerId,
@@ -97,7 +165,15 @@ class ClubDetailEditRequestService {
     final ts = data['expires_at'];
     final expiresAt = ts is Timestamp ? ts.toDate() : null;
     if (expiresAt == null || !expiresAt.isAfter(DateTime.now())) return null;
-    return expiresAt;
+    return ClubDetailEditPermission(
+      expiresAt: expiresAt,
+      fields: ClubDetailEditField.fromData(data['fields']),
+    );
+  }
+
+  Future<ClubDetailEditRequest?> requestById(String requestId) async {
+    final doc = await _requests.doc(requestId).get();
+    return doc.exists ? ClubDetailEditRequest.fromFirestore(doc) : null;
   }
 
   Future<List<ClubDetailEditRequest>> requestsForManager(
@@ -119,6 +195,7 @@ class ClubDetailEditRequestService {
   Future<ClubDetailEditRequestResult> requestEditAccess({
     required ClubModel club,
     required UserModel manager,
+    List<String> fields = ClubDetailEditField.details,
   }) async {
     final admins = await _db
         .collection('profiles')
@@ -131,6 +208,8 @@ class ClubDetailEditRequestService {
     final existing = await requestRef.get();
     final existingPending = existing.exists &&
         existing.data()?['status'] == 'pending';
+    final requestedFields = ClubDetailEditField.normalize(fields);
+    final fieldSummary = ClubDetailEditField.describe(requestedFields);
 
     await requestRef.set({
       'id': requestId,
@@ -139,6 +218,7 @@ class ClubDetailEditRequestService {
       'color': club.logoColor,
       'manager_id': manager.id,
       'manager_name': manager.name,
+      'fields': requestedFields,
       'status': 'pending',
       if (!existing.exists) 'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
@@ -152,12 +232,12 @@ class ClubDetailEditRequestService {
           .collection('items')
           .doc();
       batch.set(notificationRef, {
-        'title': 'Club details edit request',
+        'title': 'Club profile edit request',
         'body': existingPending
             ? '${manager.name} is still waiting for temporary access to edit '
-                '${club.name} name and description.'
+                '$fieldSummary for ${club.name}.'
             : '${manager.name} requested temporary access to edit '
-                '${club.name} name and description.',
+                '$fieldSummary for ${club.name}.',
         'type': 'club_detail_edit_request',
         'color': club.logoColor,
         'club_id': club.id,
@@ -200,6 +280,7 @@ class ClubDetailEditRequestService {
       requestId: requestId,
       managerName: data['manager_name'] as String? ?? '',
       color: data['color'] as String? ?? 'FF22C55E',
+      fields: ClubDetailEditField.fromData(data['fields']),
     );
   }
 
@@ -212,11 +293,14 @@ class ClubDetailEditRequestService {
     String? requestId,
     String managerName = '',
     String color = 'FF22C55E',
+    List<String> fields = ClubDetailEditField.details,
   }) async {
     final expiresAt = minutes == null
         ? DateTime(9999, 12, 31, 23, 59)
         : DateTime.now().add(Duration(minutes: minutes));
     final expiresTimestamp = Timestamp.fromDate(expiresAt);
+    final grantedFields = ClubDetailEditField.normalize(fields);
+    final fieldSummary = ClubDetailEditField.describe(grantedFields);
     final effectiveRequestId = requestId?.isNotEmpty == true
         ? requestId!
         : requestIdFor(clubId: clubId, managerId: managerId);
@@ -230,6 +314,7 @@ class ClubDetailEditRequestService {
         'club_name': clubName,
         'manager_id': managerId,
         if (managerName.isNotEmpty) 'manager_name': managerName,
+        'fields': grantedFields,
         'status': 'granted',
         'granted_by': adminId,
         'granted_minutes': minutes,
@@ -245,6 +330,7 @@ class ClubDetailEditRequestService {
         'manager_id': managerId,
         'request_id': effectiveRequestId,
         'granted_by': adminId,
+        'fields': grantedFields,
         'is_permanent': minutes == null,
         'expires_at': expiresTimestamp,
         'updated_at': FieldValue.serverTimestamp(),
@@ -254,10 +340,10 @@ class ClubDetailEditRequestService {
 
     await NotificationService().sendToUser(
       userId: managerId,
-      title: '$clubName details unlocked',
+      title: '$clubName profile unlocked',
       body: minutes == null
-          ? 'You can edit the club name and description permanently.'
-          : 'You can edit the club name and description for $minutes minutes.',
+          ? 'You can edit the $fieldSummary permanently.'
+          : 'You can edit the $fieldSummary for $minutes minutes.',
       type: 'club_detail_edit_permission',
       color: color,
       clubId: clubId,
@@ -285,8 +371,8 @@ class ClubDetailEditRequestService {
     await batch.commit();
     await NotificationService().sendToUser(
       userId: managerId,
-      title: '$clubName details locked',
-      body: 'University admin locked club name and description editing.',
+      title: '$clubName profile locked',
+      body: 'University admin locked club profile editing.',
       type: 'club_detail_edit_permission',
       color: 'FFEF4444',
       clubId: clubId,

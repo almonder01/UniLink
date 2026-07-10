@@ -3,29 +3,33 @@ part of '../club_profile_tab.dart';
 class _ClubDetailsCard extends StatelessWidget {
   final TextEditingController nameCtrl;
   final TextEditingController descCtrl;
-  final bool canEdit;
+  final bool canEditName;
+  final bool canEditDescription;
   final bool loading;
-  final bool requesting;
   final DateTime? permissionExpiresAt;
-  final VoidCallback onRequestEdit;
 
   const _ClubDetailsCard({
     required this.nameCtrl,
     required this.descCtrl,
-    required this.canEdit,
+    required this.canEditName,
+    required this.canEditDescription,
     required this.loading,
-    required this.requesting,
     required this.permissionExpiresAt,
-    required this.onRequestEdit,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final expiresAt = permissionExpiresAt;
-    final statusText = canEdit && expiresAt != null
-        ? 'Unlocked until ${TimeOfDay.fromDateTime(expiresAt).format(context)}'
-        : 'Locked. Request temporary admin permission to edit.';
+    final canEditAny = canEditName || canEditDescription;
+    final editableFields = <String>[
+      if (canEditName) ClubDetailEditField.name,
+      if (canEditDescription) ClubDetailEditField.description,
+    ];
+    final statusText = canEditAny && expiresAt != null
+        ? '${ClubDetailEditField.describe(editableFields)} unlocked until '
+            '${TimeOfDay.fromDateTime(expiresAt).format(context)}'
+        : 'Locked. Request temporary admin permission from Club Logo.';
 
     return Card(
       child: Theme(
@@ -33,33 +37,15 @@ class _ClubDetailsCard extends StatelessWidget {
         child: ExpansionTile(
           initiallyExpanded: true,
           leading: Icon(
-            canEdit ? Icons.lock_open_rounded : Icons.lock_rounded,
-            color: canEdit ? const Color(0xFF22C55E) : cs.primary,
+            canEditAny ? Icons.lock_open_rounded : Icons.lock_rounded,
+            color: canEditAny ? const Color(0xFF22C55E) : cs.primary,
           ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Club Details',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (!canEdit)
-                IconButton.filledTonal(
-                  tooltip: 'Request edit permission',
-                  onPressed: loading || requesting ? null : onRequestEdit,
-                  icon: requesting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded),
-                ),
-            ],
+          title: Text(
+            'Club Details',
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800),
           ),
           subtitle: Text(
             loading ? 'Checking edit permission...' : statusText,
@@ -73,12 +59,12 @@ class _ClubDetailsCard extends StatelessWidget {
             const SizedBox(height: 12),
             TextFormField(
               controller: nameCtrl,
-              enabled: canEdit,
+              enabled: canEditName,
               decoration: const InputDecoration(
                 labelText: 'Club Name',
                 prefixIcon: Icon(Icons.badge_outlined),
               ),
-              validator: canEdit
+              validator: canEditName
                   ? (value) => value == null || value.trim().isEmpty
                       ? 'Club name is required'
                       : null
@@ -87,7 +73,7 @@ class _ClubDetailsCard extends StatelessWidget {
             const SizedBox(height: 12),
             TextFormField(
               controller: descCtrl,
-              enabled: canEdit,
+              enabled: canEditDescription,
               minLines: 5,
               maxLines: null,
               decoration: InputDecoration(
@@ -104,7 +90,7 @@ class _ClubDetailsCard extends StatelessWidget {
                   vertical: 14,
                 ),
               ),
-              validator: canEdit
+              validator: canEditDescription
                   ? (value) => value == null || value.trim().length < 10
                       ? 'Write at least 10 characters'
                       : null

@@ -15,7 +15,6 @@ import '../../services/club_detail_edit_request_service.dart';
 import '../../services/club_service.dart';
 import '../../services/media_asset_service.dart';
 import '../../widgets/base64_image.dart';
-import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/identity_avatar.dart';
 import '../../widgets/media_auto_option_switch.dart';
 import '../../widgets/media_attachment_fields.dart';
@@ -70,9 +69,8 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   List<MediaAsset> _savedMediaAssets = [];
   bool _saving = false;
   bool _detailEditAccessLoading = true;
-  bool _canEditDetails = false;
+  ClubDetailEditPermission? _detailEditPermission;
   bool _requestingDetailEdit = false;
-  DateTime? _detailEditExpiresAt;
   Timer? _detailEditExpiryTimer;
 
   static const _logoColors = [
@@ -148,6 +146,14 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   List<MediaAsset> get _savedAudio =>
       _savedMediaAssets.where((asset) => asset.isAudio).toList();
 
+  bool get _canEditName => _detailEditPermission?.canEditName ?? false;
+  bool get _canEditDescription =>
+      _detailEditPermission?.canEditDescription ?? false;
+  bool get _canEditLogo => _detailEditPermission?.canEditLogo ?? false;
+  bool get _canEditAllProtected =>
+      _canEditName && _canEditDescription && _canEditLogo;
+  DateTime? get _detailEditExpiresAt => _detailEditPermission?.expiresAt;
+
   void _selectBackgroundVideo(MediaAsset asset) {
     setState(() {
       _pendingBackgroundVideoFile = null;
@@ -172,32 +178,30 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
     );
   }
 
-  Future<bool> _loadDetailEditAccess() async {
+  Future<ClubDetailEditPermission?> _loadDetailEditAccess() async {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null) {
       if (mounted) {
         setState(() {
           _detailEditAccessLoading = false;
-          _canEditDetails = false;
-          _detailEditExpiresAt = null;
+          _detailEditPermission = null;
         });
       }
-      return false;
+      return null;
     }
 
     if (mounted) setState(() => _detailEditAccessLoading = true);
-    final expiresAt = await _detailEditRequests.activePermissionExpiresAt(
+    final permission = await _detailEditRequests.activePermission(
       clubId: widget.club.id,
       managerId: user.id,
     );
-    if (!mounted) return expiresAt != null;
-    _scheduleDetailEditExpiry(expiresAt);
+    if (!mounted) return permission;
+    _scheduleDetailEditExpiry(permission?.expiresAt);
     setState(() {
-      _detailEditExpiresAt = expiresAt;
-      _canEditDetails = expiresAt != null;
+      _detailEditPermission = permission;
       _detailEditAccessLoading = false;
     });
-    return expiresAt != null;
+    return permission;
   }
 
   void _scheduleDetailEditExpiry(DateTime? expiresAt) {
@@ -216,11 +220,11 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
   void _lockDetailEditing() {
     if (!mounted) return;
     setState(() {
-      _canEditDetails = false;
-      _detailEditExpiresAt = null;
+      _detailEditPermission = null;
       _detailEditAccessLoading = false;
       _nameCtrl.text = widget.club.name;
       _descCtrl.text = widget.club.description;
+      _logoImage = _decode(widget.club.logoImageBase64);
     });
   }
 
@@ -228,28 +232,30 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null || _requestingDetailEdit) return;
 
-    final confirmed = await showConfirmActionDialog(
-      context,
-      title: 'Request club detail edit?',
-      message: 'Send a request to the university admin to temporarily unlock '
-          'editing for the club name and description?',
-      confirmLabel: 'Send request',
-      icon: Icons.send_rounded,
+    final fields = await showDialog<List<String>>(
+      context: context,
+      builder: (_) => _ClubDetailEditRequestDialog(
+        canEditName: _canEditName,
+        canEditDescription: _canEditDescription,
+        canEditLogo: _canEditLogo,
+      ),
     );
-    if (!confirmed) return;
+    if (fields == null || fields.isEmpty) return;
 
     setState(() => _requestingDetailEdit = true);
     try {
       final result = await _detailEditRequests.requestEditAccess(
         club: widget.club,
         manager: user,
+        fields: fields,
       );
       if (!mounted) return;
+      final fieldSummary = ClubDetailEditField.describe(fields);
       final message = switch (result) {
         ClubDetailEditRequestResult.requested =>
-          'Edit request sent to university admin.',
+          'Edit request for $fieldSummary sent to university admin.',
         ClubDetailEditRequestResult.alreadyPending =>
-          'Edit request reminder sent to university admin.',
+          'Edit request reminder for $fieldSummary sent to university admin.',
         ClubDetailEditRequestResult.noAdmins =>
           'No university admin account was found.',
       };
@@ -373,16 +379,31 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
 
     var backgroundVideoUrl = _backgroundVideoCtrl.text.trim();
     var backgroundMusicUrl = _musicCtrl.text.trim();
-    var canSaveDetails = _canEditDetails;
-    if (_canEditDetails) {
-      canSaveDetails = await _loadDetailEditAccess();
-      final detailsChanged = _nameCtrl.text.trim() != widget.club.name ||
-          _descCtrl.text.trim() != widget.club.description;
-      if (!canSaveDetails && detailsChanged) {
+    final encodedLogoImage =
+        _logoImage == null ? '' : base64Encode(_logoImage!);
+    final currentLogoImage = widget.club.logoImageBase64 ?? '';
+    final nameChanged = _nameCtrl.text.trim() != widget.club.name;
+    final descriptionChanged =
+        _descCtrl.text.trim() != widget.club.description;
+    final logoImageChanged = encodedLogoImage != currentLogoImage;
+
+    var permission = _detailEditPermission;
+    if (nameChanged || descriptionChanged || logoImageChanged) {
+      permission = await _loadDetailEditAccess();
+      final missingFields = <String>[
+        if (nameChanged && !(permission?.canEditName ?? false))
+          ClubDetailEditField.name,
+        if (descriptionChanged && !(permission?.canEditDescription ?? false))
+          ClubDetailEditField.description,
+        if (logoImageChanged && !(permission?.canEditLogo ?? false))
+          ClubDetailEditField.logo,
+      ];
+      if (missingFields.isNotEmpty) {
         if (mounted) {
+          final fieldSummary = ClubDetailEditField.describe(missingFields);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Club details edit permission expired.'),
+            SnackBar(
+              content: Text('Permission is required to edit the $fieldSummary.'),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -391,6 +412,10 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
         return;
       }
     }
+
+    final canSaveName = permission?.canEditName ?? false;
+    final canSaveDescription = permission?.canEditDescription ?? false;
+    final canSaveLogo = permission?.canEditLogo ?? false;
 
     try {
       if (_pendingBackgroundVideoFile != null) {
@@ -416,12 +441,14 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
 
     final updated = ClubModel(
       id: widget.club.id,
-      name: canSaveDetails ? _nameCtrl.text.trim() : widget.club.name,
-      description:
-          canSaveDetails ? _descCtrl.text.trim() : widget.club.description,
+      name: canSaveName ? _nameCtrl.text.trim() : widget.club.name,
+      description: canSaveDescription
+          ? _descCtrl.text.trim()
+          : widget.club.description,
       category: widget.club.category,
       logoColor: _logoColor,
-      logoImageBase64: _logoImage == null ? '' : base64Encode(_logoImage!),
+      logoImageBase64:
+          canSaveLogo ? encodedLogoImage : widget.club.logoImageBase64,
       showLogoBackground: _showLogoBackground,
       imageBase64: _clubImage == null ? '' : base64Encode(_clubImage!),
       galleryBase64List: _galleryImages
@@ -490,6 +517,12 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
                 showLogoBackground: _showLogoBackground,
                 selectedLogoColor: _logoColor,
                 logoColors: _logoColors,
+                canEditLogo: _canEditLogo,
+                loading: _detailEditAccessLoading,
+                requesting: _requestingDetailEdit,
+                permissionExpiresAt: _detailEditExpiresAt,
+                showRequestButton: !_canEditAllProtected,
+                onRequestEdit: _requestDetailEditAccess,
                 onPickLogoImage: _pickLogoImage,
                 onRemoveLogoImage: () => setState(() => _logoImage = null),
                 onShowLogoBackgroundChanged: (value) =>
@@ -510,11 +543,10 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
               _ClubDetailsCard(
                 nameCtrl: _nameCtrl,
                 descCtrl: _descCtrl,
-                canEdit: _canEditDetails,
+                canEditName: _canEditName,
+                canEditDescription: _canEditDescription,
                 loading: _detailEditAccessLoading,
-                requesting: _requestingDetailEdit,
                 permissionExpiresAt: _detailEditExpiresAt,
-                onRequestEdit: _requestDetailEditAccess,
               ),
 
               const SizedBox(height: 18),
@@ -572,6 +604,142 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
               const SizedBox(height: 40),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClubDetailEditRequestDialog extends StatefulWidget {
+  final bool canEditName;
+  final bool canEditDescription;
+  final bool canEditLogo;
+
+  const _ClubDetailEditRequestDialog({
+    required this.canEditName,
+    required this.canEditDescription,
+    required this.canEditLogo,
+  });
+
+  @override
+  State<_ClubDetailEditRequestDialog> createState() =>
+      _ClubDetailEditRequestDialogState();
+}
+
+class _ClubDetailEditRequestDialogState
+    extends State<_ClubDetailEditRequestDialog> {
+  late bool _name;
+  late bool _description;
+  late bool _logo;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = !widget.canEditName;
+    _description = !widget.canEditDescription;
+    _logo = !widget.canEditLogo;
+  }
+
+  List<String> get _selectedFields => [
+        if (_name) ClubDetailEditField.name,
+        if (_description) ClubDetailEditField.description,
+        if (_logo) ClubDetailEditField.logo,
+      ];
+
+  void _submit() {
+    final selected = _selectedFields;
+    if (selected.isEmpty) {
+      setState(() => _error = 'Select at least one field.');
+      return;
+    }
+    Navigator.pop(context, selected);
+  }
+
+  Widget _fieldTile({
+    required String title,
+    required IconData icon,
+    required bool value,
+    required bool enabled,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return CheckboxListTile(
+      value: value,
+      enabled: enabled,
+      controlAffinity: ListTileControlAffinity.leading,
+      secondary: Icon(icon),
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: enabled ? null : const Text('Already unlocked'),
+      onChanged: enabled
+          ? (checked) {
+              setState(() {
+                onChanged(checked ?? false);
+                _error = null;
+              });
+            }
+          : null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      title: const Row(
+        children: [
+          Icon(Icons.edit_note_rounded),
+          SizedBox(width: 10),
+          Expanded(child: Text('Request edit permission')),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Choose the club fields you want the university admin to unlock.',
+            style: TextStyle(color: cs.onSurface.withValues(alpha: 0.72)),
+          ),
+          const SizedBox(height: 10),
+          _fieldTile(
+            title: 'Club name',
+            icon: Icons.badge_outlined,
+            value: _name,
+            enabled: !widget.canEditName,
+            onChanged: (value) => _name = value,
+          ),
+          _fieldTile(
+            title: 'Description',
+            icon: Icons.notes_rounded,
+            value: _description,
+            enabled: !widget.canEditDescription,
+            onChanged: (value) => _description = value,
+          ),
+          _fieldTile(
+            title: 'Logo image',
+            icon: Icons.image_outlined,
+            value: _logo,
+            enabled: !widget.canEditLogo,
+            onChanged: (value) => _logo = value,
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 6),
+            Text(_error!, style: TextStyle(color: cs.error)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Send request'),
         ),
       ],
     );
