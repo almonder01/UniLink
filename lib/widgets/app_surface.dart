@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme_tokens.dart';
@@ -30,19 +32,69 @@ class AppSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final radius = borderRadius ?? tokens.radiusXlBorder;
+    final effectiveBorder = border ??
+        (tokens.glassBlur > 0
+            ? Border.all(color: tokens.border, width: 1)
+            : null);
 
-    final content = Container(
-      margin: margin,
+    final surfaceChild = tokens.glassBlur > 0
+        ? Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(
+                            alpha: tokens.isDark ? 0.16 : 0.42,
+                          ),
+                          Colors.white.withValues(alpha: 0.04),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child,
+            ],
+          )
+        : child;
+
+    Widget content = Container(
       padding: padding,
-      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: color ?? tokens.surface,
         borderRadius: radius,
-        border: border,
-        boxShadow: boxShadow,
+        border: effectiveBorder,
+        boxShadow:
+            boxShadow ?? (tokens.glassBlur > 0 ? tokens.softShadow : null),
       ),
-      child: child,
+      child: surfaceChild,
     );
+
+    if (tokens.glassBlur > 0) {
+      content = BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: tokens.glassBlur,
+          sigmaY: tokens.glassBlur,
+        ),
+        child: content,
+      );
+    }
+
+    content = ClipRRect(
+      borderRadius: radius,
+      clipBehavior: clipBehavior,
+      child: content,
+    );
+
+    if (margin != null) {
+      content = Padding(padding: margin!, child: content);
+    }
 
     if (onTap == null) return content;
     return Material(
@@ -76,14 +128,45 @@ class AppGradientPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
+    final radius = borderRadius ?? tokens.radiusXlBorder;
+
     return Container(
       margin: margin,
       padding: padding ?? EdgeInsets.all(tokens.spaceLg + 2),
       decoration: BoxDecoration(
         gradient: gradient ?? tokens.heroGradient,
-        borderRadius: borderRadius ?? tokens.radiusXlBorder,
+        borderRadius: radius,
+        border: tokens.glassBlur > 0
+            ? Border.all(color: tokens.border, width: 1)
+            : null,
+        boxShadow: tokens.glassBlur > 0 ? tokens.softShadow : null,
       ),
-      child: child,
+      child: Stack(
+        children: [
+          if (tokens.glassBlur > 0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(
+                          alpha: tokens.isDark ? 0.12 : 0.32,
+                        ),
+                        Colors.white.withValues(alpha: 0.02),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          child,
+        ],
+      ),
     );
   }
 }

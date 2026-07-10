@@ -33,6 +33,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
   final double spaceLg;
   final double spaceXl;
   final double cardElevation;
+  final double glassBlur;
 
   const AppThemeTokens({
     required this.name,
@@ -67,6 +68,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     required this.spaceLg,
     required this.spaceXl,
     required this.cardElevation,
+    required this.glassBlur,
   });
 
   bool get isDark => brightness == Brightness.dark;
@@ -152,6 +154,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     spaceLg: 16,
     spaceXl: 24,
     cardElevation: 0,
+    glassBlur: 0,
   );
 
   static const AppThemeTokens unilinkDark = AppThemeTokens(
@@ -187,6 +190,79 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     spaceLg: 16,
     spaceXl: 24,
     cardElevation: 0,
+    glassBlur: 0,
+  );
+
+  static const AppThemeTokens liquidGlassLight = AppThemeTokens(
+    name: 'liquidGlass',
+    brightness: Brightness.light,
+    seed: Color(0xFF0EA5A4),
+    pageBackground: Color(0xFFEAF8F6),
+    surface: Color(0xCCFFFFFF),
+    surfaceAlt: Color(0xB8F8FEFF),
+    elevatedSurface: Color(0xD9FFFFFF),
+    inputFill: Color(0x99FFFFFF),
+    border: Color(0x8AFFFFFF),
+    shadow: Color(0x1F0F766E),
+    textStrong: Color(0xFF102A35),
+    textMuted: Color(0xFF58717A),
+    accent: Color(0xFF7C3AED),
+    success: Color(0xFF16A34A),
+    warning: Color(0xFFF59E0B),
+    danger: Color(0xFFEF4444),
+    info: Color(0xFF06B6D4),
+    heroStart: Color(0xFF0EA5A4),
+    heroEnd: Color(0xFF7C3AED),
+    eventWarmEnd: Color(0xFFFB7185),
+    postCoolEnd: Color(0xFF0E7490),
+    radiusSm: 14,
+    radiusMd: 18,
+    radiusLg: 22,
+    radiusXl: 28,
+    radiusPill: 999,
+    spaceXs: 4,
+    spaceSm: 8,
+    spaceMd: 12,
+    spaceLg: 16,
+    spaceXl: 24,
+    cardElevation: 0,
+    glassBlur: 18,
+  );
+
+  static const AppThemeTokens liquidGlassDark = AppThemeTokens(
+    name: 'liquidGlass',
+    brightness: Brightness.dark,
+    seed: Color(0xFF22D3EE),
+    pageBackground: Color(0xFF071416),
+    surface: Color(0x66101F27),
+    surfaceAlt: Color(0x80172B35),
+    elevatedSurface: Color(0x8A12252D),
+    inputFill: Color(0x661E3540),
+    border: Color(0x33FFFFFF),
+    shadow: Color(0x66000000),
+    textStrong: Color(0xFFF4FBFC),
+    textMuted: Color(0xFFA7C4C8),
+    accent: Color(0xFFC084FC),
+    success: Color(0xFF22C55E),
+    warning: Color(0xFFFBBF24),
+    danger: Color(0xFFFB7185),
+    info: Color(0xFF22D3EE),
+    heroStart: Color(0xFF0F766E),
+    heroEnd: Color(0xFF7C3AED),
+    eventWarmEnd: Color(0xFFBE123C),
+    postCoolEnd: Color(0xFF155E75),
+    radiusSm: 14,
+    radiusMd: 18,
+    radiusLg: 22,
+    radiusXl: 28,
+    radiusPill: 999,
+    spaceXs: 4,
+    spaceSm: 8,
+    spaceMd: 12,
+    spaceLg: 16,
+    spaceXl: 24,
+    cardElevation: 0,
+    glassBlur: 20,
   );
 
   @override
@@ -223,6 +299,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     double? spaceLg,
     double? spaceXl,
     double? cardElevation,
+    double? glassBlur,
   }) {
     return AppThemeTokens(
       name: name ?? this.name,
@@ -257,6 +334,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
       spaceLg: spaceLg ?? this.spaceLg,
       spaceXl: spaceXl ?? this.spaceXl,
       cardElevation: cardElevation ?? this.cardElevation,
+      glassBlur: glassBlur ?? this.glassBlur,
     );
   }
 
@@ -296,6 +374,7 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
       spaceLg: _lerpDouble(spaceLg, other.spaceLg, t),
       spaceXl: _lerpDouble(spaceXl, other.spaceXl, t),
       cardElevation: _lerpDouble(cardElevation, other.cardElevation, t),
+      glassBlur: _lerpDouble(glassBlur, other.glassBlur, t),
     );
   }
 
@@ -305,6 +384,6 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
 extension AppThemeTokensContext on BuildContext {
   AppThemeTokens get tokens {
     return Theme.of(this).extension<AppThemeTokens>() ??
-        AppThemeTokens.unilinkLight;
+        AppThemeTokens.liquidGlassLight;
   }
 }

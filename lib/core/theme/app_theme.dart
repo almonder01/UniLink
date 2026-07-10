@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_theme_tokens.dart';
 
 class AppTheme {
-  static ThemeData get lightTheme => _build(AppThemeTokens.unilinkLight);
-  static ThemeData get darkTheme => _build(AppThemeTokens.unilinkDark);
+  static ThemeData get lightTheme => _build(AppThemeTokens.liquidGlassLight);
+  static ThemeData get darkTheme => _build(AppThemeTokens.liquidGlassDark);
 
   static TextTheme _textTheme(Brightness brightness) =>
       GoogleFonts.plusJakartaSansTextTheme(
@@ -17,13 +17,15 @@ class AppTheme {
       seedColor: tokens.seed,
       brightness: tokens.brightness,
     );
+    final glass = tokens.glassBlur > 0;
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: cs,
       extensions: <ThemeExtension<dynamic>>[tokens],
       textTheme: _textTheme(tokens.brightness),
-      scaffoldBackgroundColor: tokens.pageBackground,
+      scaffoldBackgroundColor:
+          glass ? Colors.transparent : tokens.pageBackground,
       cardTheme: CardThemeData(
         elevation: tokens.cardElevation,
         shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
@@ -108,8 +110,9 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: tokens.pageBackground,
+        backgroundColor: glass ? Colors.transparent : tokens.pageBackground,
         foregroundColor: tokens.textStrong,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.plusJakartaSans(
           fontWeight: FontWeight.w700,
           fontSize: 20,
@@ -120,8 +123,9 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: 70,
-        backgroundColor: tokens.surface,
-        indicatorColor: tokens.seed.withValues(alpha: tokens.isDark ? 0.2 : 0.12),
+        backgroundColor: glass ? tokens.elevatedSurface : tokens.surface,
+        indicatorColor:
+            tokens.seed.withValues(alpha: tokens.isDark ? 0.2 : 0.12),
         labelTextStyle: WidgetStateProperty.all(
           GoogleFonts.plusJakartaSans(
             fontSize: 11,
@@ -131,12 +135,31 @@ class AppTheme {
       ),
       searchBarTheme: SearchBarThemeData(
         elevation: WidgetStateProperty.all(0),
-        backgroundColor: WidgetStateProperty.all(tokens.surface),
+        backgroundColor: WidgetStateProperty.all(tokens.elevatedSurface),
         surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
         shape: WidgetStateProperty.all(
           RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
         ),
         side: WidgetStateProperty.all(BorderSide(color: tokens.border)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.elevatedSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: tokens.elevatedSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(tokens.radiusXl),
+          ),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: tokens.elevatedSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -171,6 +194,12 @@ class AppTheme {
               ? tokens.seed.withValues(alpha: 0.3)
               : tokens.textMuted.withValues(alpha: 0.15),
         ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: tokens.elevatedSurface,
+        foregroundColor: tokens.seed,
+        elevation: glass ? 0 : 6,
+        shape: RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
       ),
     );
   }

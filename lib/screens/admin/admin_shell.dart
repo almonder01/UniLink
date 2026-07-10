@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme_tokens.dart';
 import '../../providers/notification_provider.dart';
+import '../../widgets/app_surface.dart';
 import '../student/clubs_screen.dart';
 import '../student/notifications_screen.dart';
 import '../student/profile_screen.dart';
@@ -32,47 +33,44 @@ class _AdminShellState extends State<AdminShell> {
 
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: screens),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: tokens.shadow,
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard_rounded),
-              label: 'Dashboard',
-            ),
-            NavigationDestination(
-              icon: _NavIconWithDot(
-                icon: Icons.notifications_outlined,
-                showDot: hasUnreadNotifications,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: AppSurface(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          color: tokens.elevatedSurface,
+          borderRadius: tokens.radiusXlBorder,
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.dashboard_outlined),
+                selectedIcon: Icon(Icons.dashboard_rounded),
+                label: 'Dashboard',
               ),
-              selectedIcon: _NavIconWithDot(
-                icon: Icons.notifications_rounded,
-                showDot: hasUnreadNotifications,
+              NavigationDestination(
+                icon: _NavIconWithDot(
+                  icon: Icons.notifications_outlined,
+                  showDot: hasUnreadNotifications,
+                ),
+                selectedIcon: _NavIconWithDot(
+                  icon: Icons.notifications_rounded,
+                  showDot: hasUnreadNotifications,
+                ),
+                label: 'Alerts',
               ),
-              label: 'Alerts',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.groups_outlined),
-              selectedIcon: Icon(Icons.groups_rounded),
-              label: 'Clubs',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
+              const NavigationDestination(
+                icon: Icon(Icons.groups_outlined),
+                selectedIcon: Icon(Icons.groups_rounded),
+                label: 'Clubs',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
