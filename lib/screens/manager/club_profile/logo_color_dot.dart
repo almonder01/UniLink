@@ -3,7 +3,7 @@ part of '../club_profile_tab.dart';
 class _LogoColorDot extends StatelessWidget {
   final Color color;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _LogoColorDot({
     required this.color,

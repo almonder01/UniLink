@@ -246,10 +246,16 @@ class NotificationsScreen extends StatelessWidget {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null || user.role != 'admin' || notif.refId == null) return;
 
+    final request =
+        await ClubDetailEditRequestService().requestById(notif.refId!);
+    final fields = request?.fields ?? ClubDetailEditField.details;
+    final fieldSummary = ClubDetailEditField.describe(fields);
+    if (!context.mounted) return;
+
     final confirmed = await showConfirmActionDialog(
       context,
       title: 'Grant edit access?',
-      message: 'Allow this club manager to edit the club name and description '
+      message: 'Allow this club manager to edit the $fieldSummary '
           'for ${ClubDetailEditRequestService.defaultGrantMinutes} minutes?',
       confirmLabel: 'Grant',
       icon: Icons.lock_open_rounded,

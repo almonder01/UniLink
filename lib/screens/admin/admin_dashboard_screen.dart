@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/club_service.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import 'widgets/admin_club_form_dialog.dart';
 import 'widgets/clubs_tab.dart';
@@ -75,16 +76,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       'name': result.name,
       'description': result.description,
       'category': result.category,
+      'logo_color': result.logoColor,
+      'logo_image_base64': result.logoImageBase64,
+      'show_logo_background': result.showLogoBackground,
     };
 
     if (isEditing) {
-      await _db.collection('clubs').doc(club['id'] as String).update(data);
+      await ClubService().updateClubData(
+        clubId: club['id'] as String,
+        data: data,
+      );
     } else {
       final ref = _db.collection('clubs').doc();
       await ref.set({
         'id': ref.id,
         ...data,
-        'logo_color': 'FF6366F1',
         'member_count': 0,
         'manager_id': null,
         'manager_name': null,

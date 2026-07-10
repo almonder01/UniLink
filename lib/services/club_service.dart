@@ -24,6 +24,33 @@ class ClubService {
     await _syncClubIdentity(club);
   }
 
+  Future<void> updateClubData({
+    required String clubId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _col.doc(clubId).update(data);
+
+    final identityData = <String, dynamic>{};
+    if (data.containsKey('name')) {
+      identityData['clubName'] = data['name'] as String? ?? '';
+    }
+    if (data.containsKey('logo_color')) {
+      identityData['clubLogoColor'] =
+          data['logo_color'] as String? ?? 'FF6366F1';
+    }
+    if (data.containsKey('logo_image_base64')) {
+      identityData['clubLogoImageBase64'] =
+          data['logo_image_base64'] as String? ?? '';
+    }
+    if (data.containsKey('show_logo_background')) {
+      identityData['clubShowLogoBackground'] =
+          data['show_logo_background'] as bool? ?? true;
+    }
+    if (identityData.isEmpty) return;
+
+    await _syncClubIdentityFields(clubId: clubId, data: identityData);
+  }
+
   Future<void> _syncClubIdentity(ClubModel club) async {
     final data = {
       'clubName': club.name,
@@ -32,14 +59,21 @@ class ClubService {
       'clubShowLogoBackground': club.showLogoBackground,
     };
 
+    await _syncClubIdentityFields(clubId: club.id, data: data);
+  }
+
+  Future<void> _syncClubIdentityFields({
+    required String clubId,
+    required Map<String, dynamic> data,
+  }) async {
     await _syncCollectionClubIdentity(
       collection: 'posts',
-      clubId: club.id,
+      clubId: clubId,
       data: data,
     );
     await _syncCollectionClubIdentity(
       collection: 'events',
-      clubId: club.id,
+      clubId: clubId,
       data: data,
     );
   }
