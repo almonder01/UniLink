@@ -639,7 +639,7 @@ class _GrantEditPermissionDialogState
             onChanged: (value) => _description = value,
           ),
           _fieldTile(
-            title: 'Logo',
+            title: 'Logo image',
             icon: Icons.image_outlined,
             value: _logo,
             onChanged: (value) => _logo = value,

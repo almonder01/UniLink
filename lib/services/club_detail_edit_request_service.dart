@@ -36,7 +36,7 @@ class ClubDetailEditField {
     return switch (field) {
       name => 'club name',
       description => 'description',
-      logo => 'logo',
+      logo => 'logo image',
       _ => field,
     };
   }

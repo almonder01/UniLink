@@ -224,9 +224,7 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
       _detailEditAccessLoading = false;
       _nameCtrl.text = widget.club.name;
       _descCtrl.text = widget.club.description;
-      _logoColor = widget.club.logoColor;
       _logoImage = _decode(widget.club.logoImageBase64);
-      _showLogoBackground = widget.club.showLogoBackground;
     });
   }
 
@@ -387,19 +385,17 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
     final nameChanged = _nameCtrl.text.trim() != widget.club.name;
     final descriptionChanged =
         _descCtrl.text.trim() != widget.club.description;
-    final logoChanged = _logoColor != widget.club.logoColor ||
-        encodedLogoImage != currentLogoImage ||
-        _showLogoBackground != widget.club.showLogoBackground;
+    final logoImageChanged = encodedLogoImage != currentLogoImage;
 
     var permission = _detailEditPermission;
-    if (nameChanged || descriptionChanged || logoChanged) {
+    if (nameChanged || descriptionChanged || logoImageChanged) {
       permission = await _loadDetailEditAccess();
       final missingFields = <String>[
         if (nameChanged && !(permission?.canEditName ?? false))
           ClubDetailEditField.name,
         if (descriptionChanged && !(permission?.canEditDescription ?? false))
           ClubDetailEditField.description,
-        if (logoChanged && !(permission?.canEditLogo ?? false))
+        if (logoImageChanged && !(permission?.canEditLogo ?? false))
           ClubDetailEditField.logo,
       ];
       if (missingFields.isNotEmpty) {
@@ -450,11 +446,10 @@ class _ClubProfileTabState extends State<ClubProfileTab> {
           ? _descCtrl.text.trim()
           : widget.club.description,
       category: widget.club.category,
-      logoColor: canSaveLogo ? _logoColor : widget.club.logoColor,
+      logoColor: _logoColor,
       logoImageBase64:
           canSaveLogo ? encodedLogoImage : widget.club.logoImageBase64,
-      showLogoBackground:
-          canSaveLogo ? _showLogoBackground : widget.club.showLogoBackground,
+      showLogoBackground: _showLogoBackground,
       imageBase64: _clubImage == null ? '' : base64Encode(_clubImage!),
       galleryBase64List: _galleryImages
           .map((image) => base64Encode(image))
@@ -724,7 +719,7 @@ class _ClubDetailEditRequestDialogState
             onChanged: (value) => _description = value,
           ),
           _fieldTile(
-            title: 'Logo',
+            title: 'Logo image',
             icon: Icons.image_outlined,
             value: _logo,
             enabled: !widget.canEditLogo,

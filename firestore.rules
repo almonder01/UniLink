@@ -80,9 +80,7 @@ service cloud.firestore {
       return !changedClubFields().hasAny([
         'name',
         'description',
-        'logo_color',
         'logo_image_base64',
-        'show_logo_background',
       ]);
     }
 
@@ -91,11 +89,7 @@ service cloud.firestore {
           || hasClubDetailFieldPermission(clubId, 'name'))
         && (!changedClubFields().hasAny(['description'])
           || hasClubDetailFieldPermission(clubId, 'description'))
-        && (!changedClubFields().hasAny([
-            'logo_color',
-            'logo_image_base64',
-            'show_logo_background',
-          ])
+        && (!changedClubFields().hasAny(['logo_image_base64'])
           || hasClubDetailFieldPermission(clubId, 'logo'));
     }
 

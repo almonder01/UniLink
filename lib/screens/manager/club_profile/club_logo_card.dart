@@ -42,8 +42,8 @@ class _ClubLogoCard extends StatelessWidget {
     final statusText = loading
         ? 'Checking edit permission...'
         : canEditLogo && expiresAt != null
-            ? 'Logo unlocked until ${TimeOfDay.fromDateTime(expiresAt).format(context)}'
-            : 'Logo changes need admin permission.';
+            ? 'Logo image unlocked until ${TimeOfDay.fromDateTime(expiresAt).format(context)}'
+            : 'Logo image changes need admin permission.';
 
     return Card(
       child: Padding(
@@ -129,8 +129,7 @@ class _ClubLogoCard extends StatelessWidget {
             const SizedBox(height: 12),
             SwitchListTile(
               value: showLogoBackground,
-              onChanged:
-                  canEditLogo ? onShowLogoBackgroundChanged : null,
+              onChanged: onShowLogoBackgroundChanged,
               title: const Text(
                 'Show logo background',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
@@ -146,8 +145,7 @@ class _ClubLogoCard extends StatelessWidget {
                   _LogoColorDot(
                     color: Color(int.parse(colorHex, radix: 16)),
                     selected: selectedLogoColor == colorHex,
-                    onTap:
-                        canEditLogo ? () => onLogoColorChanged(colorHex) : null,
+                    onTap: () => onLogoColorChanged(colorHex),
                   ),
               ],
             ),
