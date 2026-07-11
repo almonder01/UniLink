@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../core/theme/app_theme_tokens.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/app_surface.dart';
 import 'splash/splash_logo_mark.dart';
 import 'splash/splash_progress_line.dart';
 import 'splash/splash_signal_bars.dart';
@@ -52,6 +54,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -66,31 +70,31 @@ class _SplashScreenState extends State<SplashScreen> {
           final subtitleSize = (shortestSide * 0.04).clamp(13.0, 15.0);
           final topGap = (height * 0.035).clamp(16.0, 24.0);
           final actionGap = (height * 0.048).clamp(22.0, 34.0);
+          final panelPadding = (width * 0.065).clamp(22.0, 30.0);
 
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF4F46E5),
-                  Color(0xFF7C3AED),
-                  Color(0xFF9333EA),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding.toDouble(),
-                    vertical: 18,
+          return SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding.toDouble(),
+                  vertical: 18,
+                ),
+                physics: const NeverScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: contentWidth.toDouble(),
                   ),
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: contentWidth.toDouble(),
+                  child: AppSurface(
+                    padding: EdgeInsets.fromLTRB(
+                      panelPadding.toDouble(),
+                      (panelPadding + 4).toDouble(),
+                      panelPadding.toDouble(),
+                      panelPadding.toDouble(),
                     ),
+                    color: tokens.elevatedSurface.withValues(
+                      alpha: tokens.isDark ? 0.54 : 0.72,
+                    ),
+                    borderRadius: tokens.radiusXlBorder,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -98,9 +102,9 @@ class _SplashScreenState extends State<SplashScreen> {
                             .animate()
                             .fade(duration: 650.ms)
                             .scale(
-                              begin: const Offset(0.76, 0.76),
-                              duration: 750.ms,
-                              curve: Curves.easeOutBack,
+                              begin: const Offset(0.84, 0.84),
+                              duration: 760.ms,
+                              curve: Curves.easeOutCubic,
                             ),
                         SizedBox(height: topGap.toDouble()),
                         FittedBox(
@@ -108,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           child: Text(
                             'UniLink',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.96),
+                              color: tokens.textStrong,
                               fontSize: titleSize.toDouble(),
                               fontWeight: FontWeight.w900,
                             ),
@@ -128,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.78),
+                            color: tokens.textMuted,
                             fontSize: subtitleSize.toDouble(),
                             fontWeight: FontWeight.w600,
                           ),
@@ -145,15 +149,11 @@ class _SplashScreenState extends State<SplashScreen> {
                             .animate()
                             .fade(delay: 850.ms, duration: 350.ms),
                         SizedBox(
-                          height: (height * 0.025)
-                              .clamp(12.0, 18.0)
-                              .toDouble(),
+                          height: (height * 0.025).clamp(12.0, 18.0).toDouble(),
                         ),
                         SplashProgressLine(
                           width: (contentWidth * 0.56).clamp(132.0, 168.0),
-                        )
-                            .animate()
-                            .fade(delay: 1050.ms, duration: 350.ms),
+                        ).animate().fade(delay: 1050.ms, duration: 350.ms),
                       ],
                     ),
                   ),
