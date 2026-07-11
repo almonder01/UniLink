@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme_tokens.dart';
+import '../../../widgets/app_surface.dart';
 import '../../../widgets/app_search_field.dart';
 import 'club_tile.dart';
 
@@ -31,6 +33,7 @@ class ClubsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
     return StreamBuilder<QuerySnapshot>(
       stream: db.collection('clubs').snapshots(),
@@ -51,26 +54,14 @@ class ClubsTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
           children: [
             // ── Header card ──────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    cs.primary,
-                    Color.lerp(cs.primary, Colors.purple, 0.5)!,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
+            AppGradientPanel(
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(tokens.spaceSm + 2),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: tokens.radiusMdBorder,
                     ),
                     child: const Icon(Icons.school_rounded,
                         color: Colors.white, size: 26),
@@ -132,10 +123,10 @@ class ClubsTab extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(16),
+                  color: tokens.warning.withValues(alpha: 0.14),
+                  borderRadius: tokens.radiusLgBorder,
                   border: Border.all(
-                    color: const Color(0xFFFBBF24).withValues(alpha: 0.5),
+                    color: tokens.warning.withValues(alpha: 0.5),
                   ),
                 ),
                 child: Row(
@@ -147,14 +138,15 @@ class ClubsTab extends StatelessWidget {
                         'Review and reassign club managers for the new academic year.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: const Color(0xFF92400E).withValues(alpha: 0.9),
+                          color: tokens.warning,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded,
-                          size: 16, color: Color(0xFF92400E)),
+                          size: 16),
+                      color: tokens.warning,
                       onPressed: onDismissBanner,
                     ),
                   ],

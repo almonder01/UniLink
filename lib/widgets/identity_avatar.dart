@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme_tokens.dart';
+
 String genderAssetPath(String? gender) =>
     gender == 'female' ? 'assets/images/female.png' : 'assets/images/male.png';
 
@@ -34,6 +36,7 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final bytes = decodeBase64Image(photoBase64);
     final size = radius * 2;
 
@@ -42,7 +45,7 @@ class UserAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: backgroundColor ?? cs.primary.withValues(alpha: 0.12),
+        color: backgroundColor ?? tokens.subtleFill(cs.primary),
         border: borderColor == null
             ? null
             : Border.all(color: borderColor!, width: 2),
@@ -81,6 +84,7 @@ class ClubAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final bytes = decodeBase64Image(logoBase64);
     final effectiveRadius =
         borderRadius < size * 0.32 ? size * 0.32 : borderRadius;
@@ -91,7 +95,14 @@ class ClubAvatar extends StatelessWidget {
         color: showBackground ? null : Colors.transparent,
         gradient: showBackground
             ? LinearGradient(
-                colors: [color, Color.lerp(color, Colors.black, 0.25)!],
+                colors: [
+                  color,
+                  Color.lerp(
+                    color,
+                    tokens.isDark ? Colors.black : tokens.textStrong,
+                    0.25,
+                  )!,
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )

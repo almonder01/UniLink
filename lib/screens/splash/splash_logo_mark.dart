@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/theme/app_theme_tokens.dart';
 import '../../widgets/unilink_logo.dart';
 
 class SplashLogoMark extends StatelessWidget {
@@ -13,9 +16,11 @@ class SplashLogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final ringSize = size * 0.94;
     final plateSize = size * 0.73;
     final logoScale = (size / 132).clamp(0.7, 1.0);
+    final blur = (tokens.glassBlur * 0.72).clamp(8.0, 18.0);
 
     return SizedBox(
       width: size,
@@ -29,7 +34,8 @@ class SplashLogoMark extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.28),
+                color:
+                    tokens.border.withValues(alpha: tokens.isDark ? 0.78 : 1),
                 width: 1.4,
               ),
             ),
@@ -47,14 +53,36 @@ class SplashLogoMark extends StatelessWidget {
                 duration: 1300.ms,
                 curve: Curves.easeInOut,
               ),
-          Container(
-            width: plateSize,
-            height: plateSize,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.32),
+          ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: Container(
+                width: plateSize,
+                height: plateSize,
+                decoration: BoxDecoration(
+                  color: tokens.elevatedSurface.withValues(
+                    alpha: tokens.isDark ? 0.54 : 0.7,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: tokens.border),
+                  boxShadow: tokens.softShadow,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(
+                          alpha: tokens.isDark ? 0.14 : 0.42,
+                        ),
+                        tokens.info.withValues(alpha: 0.08),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -63,7 +91,6 @@ class SplashLogoMark extends StatelessWidget {
             child: const UnilinkLogo(
               size: LogoSize.large,
               showText: false,
-              color: Colors.white,
             ),
           ),
         ],

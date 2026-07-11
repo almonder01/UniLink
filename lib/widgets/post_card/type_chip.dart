@@ -10,11 +10,12 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: tokens.radiusPillBorder,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

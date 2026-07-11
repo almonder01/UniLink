@@ -14,6 +14,7 @@ import 'screens/auth/signup_screen.dart';
 import 'screens/student/student_shell.dart';
 import 'screens/admin/admin_shell.dart';
 import 'screens/manager/manager_shell.dart';
+import 'widgets/glass_scaffold_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +60,9 @@ class UniLinkApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
+      builder: (context, child) => GlassScaffoldBackground(
+        child: child ?? const SizedBox.shrink(),
+      ),
       initialRoute: '/splash',
       routes: {
         '/splash': (_) => const SplashScreen(),

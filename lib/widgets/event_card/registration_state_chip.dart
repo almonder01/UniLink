@@ -7,9 +7,9 @@ class _RegistrationStateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final isPending = status == 'pending';
-    final color =
-        isPending ? const Color(0xFFF59E0B) : const Color(0xFF22C55E);
+    final color = isPending ? tokens.warning : tokens.success;
     final label = isPending ? 'Pending approval' : 'Registered';
     final icon =
         isPending ? Icons.hourglass_top_rounded : Icons.check_circle_rounded;
@@ -18,7 +18,7 @@ class _RegistrationStateChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: tokens.radiusSmBorder,
         border: Border.all(
           color: color.withValues(alpha: 0.35),
         ),

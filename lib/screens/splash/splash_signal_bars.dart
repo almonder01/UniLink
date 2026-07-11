@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/theme/app_theme_tokens.dart';
+
 class SplashSignalBars extends StatelessWidget {
   final double scale;
 
@@ -11,6 +13,7 @@ class SplashSignalBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     const heights = [16.0, 24.0, 34.0, 24.0, 16.0];
     final safeScale = scale.clamp(0.72, 1.0);
 
@@ -24,7 +27,14 @@ class SplashSignalBars extends StatelessWidget {
             width: 6 * safeScale,
             height: heights[index] * safeScale,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
+              gradient: LinearGradient(
+                colors: [
+                  tokens.info.withValues(alpha: tokens.isDark ? 0.88 : 0.76),
+                  tokens.accent.withValues(alpha: tokens.isDark ? 0.82 : 0.68),
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
               borderRadius: BorderRadius.circular(999),
             ),
           )
