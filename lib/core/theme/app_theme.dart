@@ -18,6 +18,8 @@ class AppTheme {
       brightness: tokens.brightness,
     );
     final glass = tokens.glassBlur > 0;
+    final modalSurface = _modalSurface(tokens, glass);
+    final modalBorder = _modalBorder(tokens, glass);
 
     return ThemeData(
       useMaterial3: true,
@@ -143,23 +145,34 @@ class AppTheme {
         side: WidgetStateProperty.all(BorderSide(color: tokens.border)),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: tokens.elevatedSurface,
+        backgroundColor: modalSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: tokens.radiusXlBorder),
+        elevation: glass ? 0 : 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: tokens.radiusXlBorder,
+          side: modalBorder,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: tokens.elevatedSurface,
+        backgroundColor: modalSurface,
         surfaceTintColor: Colors.transparent,
+        elevation: glass ? 0 : 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(tokens.radiusXl),
           ),
+          side: modalBorder,
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: tokens.elevatedSurface,
+        color: modalSurface,
+        elevation: glass ? 0 : 8,
+        shadowColor: tokens.shadow,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
+        shape: RoundedRectangleBorder(
+          borderRadius: tokens.radiusLgBorder,
+          side: modalBorder,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -201,6 +214,21 @@ class AppTheme {
         elevation: glass ? 0 : 6,
         shape: RoundedRectangleBorder(borderRadius: tokens.radiusLgBorder),
       ),
+    );
+  }
+
+  static Color _modalSurface(AppThemeTokens tokens, bool glass) {
+    if (!glass) return tokens.elevatedSurface;
+    return tokens.elevatedSurface.withValues(
+      alpha: tokens.isDark ? 0.94 : 0.88,
+    );
+  }
+
+  static BorderSide _modalBorder(AppThemeTokens tokens, bool glass) {
+    if (!glass) return BorderSide.none;
+    return BorderSide(
+      color: tokens.border.withValues(alpha: tokens.isDark ? 0.6 : 0.95),
+      width: 1,
     );
   }
 }
