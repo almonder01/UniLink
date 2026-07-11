@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/theme/app_theme_tokens.dart';
 import '../models/chat_message.dart';
 import 'identity_avatar.dart';
 
@@ -19,14 +20,16 @@ class ChatMessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final bubbleColor = isMine ? cs.primaryContainer : cs.surfaceContainerHighest;
+    final bubbleColor =
+        isMine ? cs.primaryContainer : cs.surfaceContainerHighest;
     final textColor = isMine ? cs.onPrimaryContainer : cs.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isMine) ...[
             UserAvatar(
@@ -77,7 +80,8 @@ class ChatMessageTile extends StatelessWidget {
                             ),
                           ),
                         if (message.attachmentId != null) ...[
-                          if (message.text.isNotEmpty) const SizedBox(height: 8),
+                          if (message.text.isNotEmpty)
+                            const SizedBox(height: 8),
                           _AttachmentPreview(
                             message: message,
                             onTap: onAttachmentTap == null
@@ -122,9 +126,12 @@ class _AttachmentPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final isEvent = message.attachmentType == 'event';
-    final color = isEvent ? const Color(0xFFF97316) : const Color(0xFF14B8A6);
+    final color = isEvent ? tokens.warning : tokens.info;
+    final previewSurface = tokens.elevatedSurface.withValues(
+      alpha: tokens.isDark ? 0.9 : 0.78,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -133,56 +140,57 @@ class _AttachmentPreview extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color:
-              Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.72),
+          color: previewSurface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.26)),
+          border: Border.all(
+            color: tokens.border.withValues(alpha: tokens.isDark ? 0.72 : 1),
+          ),
         ),
         child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: tokens.isDark ? 0.2 : 0.14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isEvent ? Icons.event_rounded : Icons.chat_bubble_rounded,
+                color: color,
+                size: 18,
+              ),
             ),
-            child: Icon(
-              isEvent ? Icons.event_rounded : Icons.chat_bubble_rounded,
-              color: color,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.attachmentTitle ?? 'Shared item',
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if ((message.attachmentSubtitle ?? '').isNotEmpty)
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    message.attachmentSubtitle!,
+                    message.attachmentTitle ?? 'Shared item',
                     style: TextStyle(
-                      color: cs.onSurface.withValues(alpha: 0.56),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      color: tokens.textStrong,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if ((message.attachmentSubtitle ?? '').isNotEmpty)
+                    Text(
+                      message.attachmentSubtitle!,
+                      style: TextStyle(
+                        color: tokens.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
